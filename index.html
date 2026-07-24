@@ -70,10 +70,13 @@
                  type="text"
                  placeholder="Buscar..."
                  class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-32 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
+                 oninput="filtrarSugerenciasIndex()"
+                 onfocus="filtrarSugerenciasIndex()"
                  onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
           <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition" title="Buscar">
             🔍
           </button>
+          <div id="sugerenciasBuscador" class="hidden absolute top-full mt-1 left-0 w-72 bg-white rounded-lg shadow-xl max-h-80 overflow-y-auto z-50"></div>
         </div>
         <a href="admin.html" id="linkAdmin" class="hidden text-black text-xl" title="Panel Admin">⚙️</a>
         <button onclick="toggleCarrito()" class="relative text-black text-2xl">
@@ -85,13 +88,16 @@
     </div>
 
     <!-- Buscador móvil -->
-    <div class="sm:hidden px-4 mt-3 flex items-center gap-2">
+    <div class="sm:hidden px-4 mt-3 relative flex items-center gap-2">
       <input id="inputBuscadorMovil"
              type="text"
              placeholder="Buscar productos..."
              class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-black text-sm focus:outline-none focus:ring-2 focus:ring-black"
+             oninput="filtrarSugerenciasIndex()"
+             onfocus="filtrarSugerenciasIndex()"
              onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
       <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-lg text-sm" title="Buscar">🔍</button>
+      <div id="sugerenciasBuscadorMovil" class="hidden absolute top-full mt-1 left-4 right-4 bg-white rounded-lg shadow-xl max-h-72 overflow-y-auto z-50"></div>
     </div>
   </header>
 
@@ -163,10 +169,13 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main class="flex-1">
 
-      <!-- HERO vertical -->
-      <div class="w-full h-[calc(100vh-88px)] md:h-[calc(100vh-80px)] relative">
-        <img src="images/InicioEphemeral.jpeg" alt="EPHEMERAL" class="w-full h-full object-cover">
-        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white text-2xl animate-bounce">↓</div>
+      <!-- HERO: imagen completa (sin recorte), letterbox negro, tamaño moderado -->
+      <div class="w-full bg-black flex flex-col items-center justify-center px-4 pt-6 pb-4 md:pt-10 md:pb-6">
+        <img src="images/InicioEphemeral.jpeg" alt="EPHEMERAL" class="w-full max-w-3xl max-h-[60vh] md:max-h-[70vh] object-contain mx-auto">
+        <div class="mt-4 flex flex-col items-center gap-2 text-center">
+          <p class="text-xs md:text-sm tracking-[0.2em] uppercase text-gray-300">Conoce nuestras secciones</p>
+          <div class="text-white text-2xl animate-bounce">↓</div>
+        </div>
       </div>
 
       <!-- SECCIONES (una por cada sección: hombre, mujer, accesorios, ...) -->
@@ -239,6 +248,7 @@
       try {
         const snapshot = await db.collection('productos').get();
         todosLosProductos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        generarCategoriasSidebar();
         renderizarSecciones();
         actualizarCarritoUI();
       } catch (error) {
@@ -246,10 +256,34 @@
       }
     }
 
+    // ===== SIDEBAR: categorías reales (dinámicas) -> listado.html?categoria=X =====
+    function generarCategoriasSidebar() {
+      const categorias = [...new Set(todosLosProductos.map(p => p.categoria))].sort();
+      const listaDesktop = document.getElementById('listaCategorias');
+      const listaMovil = document.getElementById('listaCategoriasMovil');
+
+      categorias.forEach(cat => {
+        const nombreBonito = cat.charAt(0).toUpperCase() + cat.slice(1);
+        listaDesktop.innerHTML += `
+          <li>
+            <a href="listado.html?categoria=${encodeURIComponent(cat)}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+              ${nombreBonito}
+            </a>
+          </li>`;
+        listaMovil.innerHTML += `
+          <li>
+            <a href="listado.html?categoria=${encodeURIComponent(cat)}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+              ${nombreBonito}
+            </a>
+          </li>`;
+      });
+    }
+
     function nombreBonitoSeccion(sec) {
       return NOMBRES_SECCIONES[sec] || (sec.charAt(0).toUpperCase() + sec.slice(1));
     }
 
+    // ===== SECCIONES CON CARRUSEL (tarjeta completa: favorito, añadir, comprar) =====
     function renderizarSecciones() {
       const contenedor = document.getElementById('contenedorSecciones');
       contenedor.innerHTML = '';
@@ -272,11 +306,25 @@
           </div>
           <div class="carrusel-scroll flex gap-4 overflow-x-auto pb-3">
             ${productosSeccion.map(p => `
-              <a href="listado.html?seccion=${encodeURIComponent(sec)}" class="carrusel-item flex-shrink-0 w-40 md:w-48 bg-zinc-900 rounded-xl p-3 hover:scale-105 transition duration-300">
-                <img src="${p.imagenes[0]}" alt="${p.nombre}" loading="lazy" class="rounded-lg mb-2 w-full h-40 md:h-48 object-cover">
-                <p class="text-sm font-semibold truncate">${p.nombre}</p>
-                <p class="text-gray-400 text-xs">$${p.precio} MXN</p>
-              </a>
+              <div class="carrusel-item flex-shrink-0 w-44 md:w-52 bg-zinc-900 rounded-xl p-3 hover:scale-105 transition duration-300">
+                <div class="relative cursor-pointer" onclick="window.location.href='producto.html?id=${p.id}'">
+                  <img src="${p.imagenes[0]}" alt="${p.nombre}" loading="lazy" class="rounded-lg mb-2 w-full h-40 md:h-48 object-cover">
+                  <button onclick="event.stopPropagation(); toggleFavorito('${p.id}', this)"
+                          class="favorito-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-lg">
+                    ${favoritosUsuario.includes(p.id) ? '❤️' : '🤍'}
+                  </button>
+                </div>
+                <h3 class="text-sm font-semibold truncate cursor-pointer" onclick="window.location.href='producto.html?id=${p.id}'">${p.nombre}</h3>
+                <p class="text-gray-400 text-xs mb-2">$${p.precio} MXN</p>
+                <div class="flex gap-2">
+                  <button onclick='agregarAlCarritoRapido(${JSON.stringify(p)})' class="flex-1 bg-zinc-700 hover:bg-zinc-600 transition text-white px-2 py-1.5 rounded-lg text-xs font-semibold">
+                    Añadir
+                  </button>
+                  <button onclick="window.location.href='producto.html?id=${p.id}'" class="flex-1 bg-green-500 hover:bg-green-600 transition text-white px-2 py-1.5 rounded-lg text-xs font-semibold">
+                    Compra ya
+                  </button>
+                </div>
+              </div>
             `).join('')}
           </div>
         `;
@@ -284,14 +332,105 @@
       });
     }
 
-    // ===== BUSCADOR: manda a listado.html =====
+    // ===== BUSCADOR: sugerencias en vivo (igual que listado.html) =====
+    function normalizarTexto(str) {
+      return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function obtenerTextoBusquedaIndex() {
+      return document.getElementById('inputBuscador').value ||
+             document.getElementById('inputBuscadorMovil').value || '';
+    }
+
+    function filtrarSugerenciasIndex() {
+      const textoCrudo = obtenerTextoBusquedaIndex();
+      const texto = normalizarTexto(textoCrudo);
+
+      if (!texto) {
+        ocultarSugerencias();
+        return;
+      }
+
+      const filtrados = todosLosProductos.filter(p => normalizarTexto(p.nombre).includes(texto));
+      mostrarSugerencias(filtrados, texto);
+    }
+
+    function mostrarSugerencias(filtrados, textoBusqueda) {
+      const resultados = filtrados.slice(0, 6);
+      ['sugerenciasBuscador', 'sugerenciasBuscadorMovil'].forEach(contenedorId => {
+        const contenedor = document.getElementById(contenedorId);
+        if (!contenedor) return;
+        if (resultados.length === 0) {
+          contenedor.innerHTML = `<p class="text-sm text-gray-500 p-3">Sin resultados para "${textoBusqueda}"</p>`;
+        } else {
+          contenedor.innerHTML = resultados.map(p => `
+            <div onclick="window.location.href='producto.html?id=${p.id}'"
+                 class="flex items-center gap-3 p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0">
+              <img src="${p.imagenes[0]}" class="w-10 h-10 object-cover rounded">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-black truncate">${p.nombre}</p>
+                <p class="text-xs text-gray-500">$${p.precio} MXN</p>
+              </div>
+            </div>
+          `).join('');
+        }
+        contenedor.classList.remove('hidden');
+      });
+    }
+
+    function ocultarSugerencias() {
+      const d = document.getElementById('sugerenciasBuscador');
+      const m = document.getElementById('sugerenciasBuscadorMovil');
+      if (d) d.classList.add('hidden');
+      if (m) m.classList.add('hidden');
+    }
+
+    // Botón/Enter 🔍: manda a listado.html con el texto de búsqueda
     function irABuscar() {
-      const texto = (document.getElementById('inputBuscador').value ||
-                     document.getElementById('inputBuscadorMovil').value || '').trim();
+      const texto = obtenerTextoBusquedaIndex().trim();
       window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
     }
 
-    // ===== CARRITO (solo lectura/contador aquí, se gestiona a fondo en listado/producto) =====
+    // ===== CARRITO =====
+    function agregarAlCarritoRapido(producto) {
+      let talla = 'Única';
+      let stockDisponible = producto.stock || 0;
+
+      if (producto.tallas && producto.tallas.length > 0 && typeof producto.tallas[0] === 'object') {
+        const tallaConStock = producto.tallas.find(t => t.stock > 0);
+        if (!tallaConStock) {
+          alert('Este producto no tiene stock disponible en ninguna talla.');
+          return;
+        }
+        talla = tallaConStock.nombre;
+        stockDisponible = tallaConStock.stock;
+      }
+
+      const claveUnica = `${producto.id}-${talla}`;
+      const existente = carrito.find(item => item.claveUnica === claveUnica);
+
+      if (existente) {
+        if (existente.cantidad >= stockDisponible) {
+          alert(`Ya tienes el máximo disponible (${stockDisponible}) de "${producto.nombre}" (talla ${talla}) en tu carrito.`);
+          return;
+        }
+        existente.cantidad += 1;
+      } else {
+        carrito.push({
+          id: producto.id,
+          nombre: producto.nombre,
+          precio: producto.precio,
+          imagenes: producto.imagenes,
+          talla: talla,
+          cantidad: 1,
+          claveUnica
+        });
+      }
+      guardarCarrito();
+      actualizarCarritoUI();
+      toggleCarrito();
+    }
+
     function actualizarCarritoUI() {
       const contador = document.getElementById('contadorCarrito');
       const totalItems = carrito.reduce((sum, item) => sum + item.cantidad, 0);
@@ -373,6 +512,7 @@
       auth.signOut();
     }
 
+    // ===== FAVORITOS =====
     async function cargarFavoritos() {
       if (!usuarioActual) { favoritosUsuario = []; return; }
       try {
@@ -381,6 +521,32 @@
       } catch (error) {
         console.error('Error al cargar favoritos:', error);
         favoritosUsuario = [];
+      }
+    }
+
+    async function toggleFavorito(productoId, btn) {
+      if (!usuarioActual) {
+        if (confirm('Necesitas iniciar sesión para guardar favoritos. ¿Iniciar sesión ahora?')) {
+          iniciarSesionGoogle();
+        }
+        return;
+      }
+
+      const ref = db.collection('usuarios').doc(usuarioActual.uid).collection('favoritos').doc(productoId);
+      const yaEsFavorito = favoritosUsuario.includes(productoId);
+
+      try {
+        if (yaEsFavorito) {
+          await ref.delete();
+          favoritosUsuario = favoritosUsuario.filter(id => id !== productoId);
+          btn.textContent = '🤍';
+        } else {
+          await ref.set({ fecha: firebase.firestore.FieldValue.serverTimestamp() });
+          favoritosUsuario.push(productoId);
+          btn.textContent = '❤️';
+        }
+      } catch (error) {
+        alert('Error al actualizar favoritos: ' + error.message);
       }
     }
 
@@ -435,10 +601,18 @@
       }
 
       actualizarVisibilidadFavoritos();
-      cargarFavoritos();
+      cargarFavoritos().then(() => {
+        if (todosLosProductos.length > 0) renderizarSecciones();
+      });
     });
 
     document.getElementById('btnMenuMovil').addEventListener('click', toggleMenuMovil);
+
+    document.addEventListener('click', (e) => {
+      const dentroDesktop = document.getElementById('inputBuscador')?.parentElement.contains(e.target);
+      const dentroMovil = document.getElementById('inputBuscadorMovil')?.parentElement.contains(e.target);
+      if (!dentroDesktop && !dentroMovil) ocultarSugerencias();
+    });
 
     window.addEventListener('DOMContentLoaded', cargarProductos);
   </script>

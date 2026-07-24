@@ -51,10 +51,13 @@
                  type="text"
                  placeholder="Buscar..."
                  class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-32 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
+                 oninput="filtrarSugerenciasProducto()"
+                 onfocus="filtrarSugerenciasProducto()"
                  onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
           <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition" title="Buscar">
             🔍
           </button>
+          <div id="sugerenciasBuscador" class="hidden absolute top-full mt-1 left-0 w-72 bg-white rounded-lg shadow-xl max-h-80 overflow-y-auto z-50"></div>
         </div>
         <a href="admin.html" id="linkAdmin" class="hidden text-black text-xl" title="Panel Admin">⚙️</a>
         <button onclick="toggleCarrito()" class="relative text-black text-2xl">
@@ -65,13 +68,16 @@
     </div>
 
     <!-- Buscador móvil -->
-    <div class="sm:hidden px-4 mt-3 flex items-center gap-2">
+    <div class="sm:hidden px-4 mt-3 relative flex items-center gap-2">
       <input id="inputBuscadorMovil"
              type="text"
              placeholder="Buscar productos..."
              class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-black text-sm focus:outline-none focus:ring-2 focus:ring-black"
+             oninput="filtrarSugerenciasProducto()"
+             onfocus="filtrarSugerenciasProducto()"
              onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
       <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-lg text-sm" title="Buscar">🔍</button>
+      <div id="sugerenciasBuscadorMovil" class="hidden absolute top-full mt-1 left-4 right-4 bg-white rounded-lg shadow-xl max-h-72 overflow-y-auto z-50"></div>
     </div>
   </header>
 
@@ -226,22 +232,76 @@
     let cantidadSeleccionada = 1;
     let carrito = JSON.parse(sessionStorage.getItem('carrito')) || [];
     let indiceImagenActual = 0;
+    let todosLosProductos = [];
 
     const params = new URLSearchParams(window.location.search);
     const productoId = params.get('id');
 
-    // ===== BUSCADOR: manda a listado.html =====
+    // ===== BUSCADOR: sugerencias en vivo + manda a listado.html =====
+    function normalizarTexto(str) {
+      return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function obtenerTextoBusquedaProducto() {
+      return document.getElementById('inputBuscador').value ||
+             document.getElementById('inputBuscadorMovil').value || '';
+    }
+
+    function filtrarSugerenciasProducto() {
+      const textoCrudo = obtenerTextoBusquedaProducto();
+      const texto = normalizarTexto(textoCrudo);
+
+      if (!texto) {
+        ocultarSugerencias();
+        return;
+      }
+
+      const filtrados = todosLosProductos.filter(p => normalizarTexto(p.nombre).includes(texto));
+      mostrarSugerencias(filtrados, texto);
+    }
+
+    function mostrarSugerencias(filtrados, textoBusqueda) {
+      const resultados = filtrados.slice(0, 6);
+      ['sugerenciasBuscador', 'sugerenciasBuscadorMovil'].forEach(contenedorId => {
+        const contenedor = document.getElementById(contenedorId);
+        if (!contenedor) return;
+        if (resultados.length === 0) {
+          contenedor.innerHTML = `<p class="text-sm text-gray-500 p-3">Sin resultados para "${textoBusqueda}"</p>`;
+        } else {
+          contenedor.innerHTML = resultados.map(p => `
+            <div onclick="window.location.href='producto.html?id=${p.id}'"
+                 class="flex items-center gap-3 p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0">
+              <img src="${p.imagenes[0]}" class="w-10 h-10 object-cover rounded">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-black truncate">${p.nombre}</p>
+                <p class="text-xs text-gray-500">$${p.precio} MXN</p>
+              </div>
+            </div>
+          `).join('');
+        }
+        contenedor.classList.remove('hidden');
+      });
+    }
+
+    function ocultarSugerencias() {
+      const d = document.getElementById('sugerenciasBuscador');
+      const m = document.getElementById('sugerenciasBuscadorMovil');
+      if (d) d.classList.add('hidden');
+      if (m) m.classList.add('hidden');
+    }
+
     function irABuscar() {
-      const texto = (document.getElementById('inputBuscador').value ||
-                     document.getElementById('inputBuscadorMovil').value || '').trim();
+      const texto = obtenerTextoBusquedaProducto().trim();
       window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
     }
 
+    // Carga todos los productos una vez: sirve tanto para el sidebar de categorías
+    // como para las sugerencias en vivo del buscador.
     async function cargarCategorias() {
       try {
         const snapshot = await db.collection('productos').get();
-        const productos = snapshot.docs.map(doc => doc.data());
-        const categorias = [...new Set(productos.map(p => p.categoria))];
+        todosLosProductos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const categorias = [...new Set(todosLosProductos.map(p => p.categoria))];
 
         const listaDesktop = document.getElementById('listaCategorias');
         const listaMovil = document.getElementById('listaCategoriasMovil');
@@ -250,13 +310,13 @@
           const nombreBonito = cat.charAt(0).toUpperCase() + cat.slice(1);
           listaDesktop.innerHTML += `
             <li>
-              <a href="listado.html?categoria=${cat}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+              <a href="listado.html?categoria=${encodeURIComponent(cat)}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
                 ${nombreBonito}
               </a>
             </li>`;
           listaMovil.innerHTML += `
             <li>
-              <a href="listado.html?categoria=${cat}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+              <a href="listado.html?categoria=${encodeURIComponent(cat)}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
                 ${nombreBonito}
               </a>
             </li>`;
@@ -630,6 +690,12 @@
     }
 
     document.getElementById('btnMenuMovil').addEventListener('click', toggleMenuMovil);
+
+    document.addEventListener('click', (e) => {
+      const dentroDesktop = document.getElementById('inputBuscador')?.parentElement.contains(e.target);
+      const dentroMovil = document.getElementById('inputBuscadorMovil')?.parentElement.contains(e.target);
+      if (!dentroDesktop && !dentroMovil) ocultarSugerencias();
+    });
 
     window.addEventListener('DOMContentLoaded', () => {
       cargarProducto();
