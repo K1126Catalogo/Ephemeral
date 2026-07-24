@@ -169,10 +169,11 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main class="flex-1">
 
-      <!-- HERO: en móvil ocupa el ancho completo (edge-to-edge, imagen vertical íntegra);
-           en escritorio se limita el ancho para que no quede excesivamente alta, sin recortar nada. -->
+      <!-- HERO: imagen VERTICAL en móvil (edge-to-edge, sin recorte) e imagen HORIZONTAL
+           en escritorio (banner ancho, sin recorte ni zoom raro) -->
       <div class="w-full bg-black flex flex-col items-center justify-center pb-4 md:pb-6">
-        <img src="images/InicioEphemeral.jpeg" alt="EPHEMERAL" class="w-full md:max-w-lg lg:max-w-xl h-auto object-contain">
+        <img src="images/InicioEphemeral.jpeg" alt="EPHEMERAL" class="block md:hidden w-full h-auto object-contain">
+        <img src="images/InicioEphemeralPC.png" alt="EPHEMERAL" class="hidden md:block w-full h-auto object-contain">
         <div class="mt-4 flex flex-col items-center gap-2 text-center px-4">
           <p class="text-xs md:text-sm tracking-[0.2em] uppercase text-gray-300">Conoce nuestras secciones</p>
           <div class="text-white text-2xl animate-bounce">↓</div>
