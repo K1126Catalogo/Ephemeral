@@ -30,6 +30,16 @@
     .carrusel-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
     .carrusel-scroll { scroll-snap-type: x mandatory; }
     .carrusel-item { scroll-snap-align: start; }
+
+    /* Arreglo del bug de Safari/iOS: el header "sticky" a veces no se repinta
+       a su ancho completo cuando el contenido de abajo cambia de altura
+       (justo al terminar de cargar los productos). Forzamos que el header
+       viva en su propia capa de composición para que siempre se repinte bien. */
+    header {
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      will-change: transform;
+    }
   </style>
 
   <!-- Firebase SDK -->
