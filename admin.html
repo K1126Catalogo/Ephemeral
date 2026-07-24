@@ -92,6 +92,13 @@
             </select>
             <input id="fCategoria" type="text" placeholder="Nombre de la nueva categoría" class="hidden w-full px-4 py-2 rounded-lg text-black mt-2">
           </div>
+
+          <select id="fSeccion" class="w-full px-4 py-2 rounded-lg text-black">
+            <option value="">Selecciona sección...</option>
+            <option value="hombre">Hombre</option>
+            <option value="mujer">Mujer</option>
+            <option value="accesorios">Accesorios</option>
+          </select>
           <input id="fPrecio" type="number" placeholder="Precio MXN" class="px-4 py-2 rounded-lg text-black">
         </div>
 
@@ -344,14 +351,15 @@
       const producto = {
         nombre: document.getElementById('fNombre').value,
         categoria: obtenerCategoriaFormulario(),
+        seccion: document.getElementById('fSeccion').value,
         precio: Number(document.getElementById('fPrecio').value),
         tallas: obtenerTallasDelFormulario(),
         descripcion: document.getElementById('fDescripcion').value,
         imagenes: document.getElementById('fImagenes').value.split(',').map(s => s.trim()).filter(Boolean)
       };
 
-      if (!producto.nombre || !producto.categoria || !producto.precio) {
-        alert('Llena al menos nombre, categoría y precio');
+      if (!producto.nombre || !producto.categoria || !producto.precio || !producto.seccion) {
+        alert('Llena al menos nombre, categoría, sección y precio');
         return;
       }
 
@@ -398,7 +406,7 @@
             <img src="${p.imagenes[0]}" class="w-full h-32 object-cover rounded-lg mb-2">
             <p class="font-semibold text-sm truncate">${p.nombre}</p>
             <p class="text-xs text-gray-400 mb-2">$${p.precio} MXN · Stock total: ${stockTotal}</p>
-            <p class="text-xs text-gray-500 mb-3">${p.categoria}</p>
+            <p class="text-xs text-gray-500 mb-3">${p.categoria} ${p.seccion ? `· ${p.seccion}` : ''}</p>
             <div class="flex gap-2 mt-auto">
               <button onclick='editarProducto("${p.id}", ${JSON.stringify(p)})' class="flex-1 bg-blue-500 hover:bg-blue-600 transition px-2 py-1 rounded-lg text-xs">
                 Editar
@@ -422,6 +430,7 @@
       document.getElementById('productoId').value = id;
       document.getElementById('fNombre').value = producto.nombre;
       document.getElementById('fCategoriaSelect').value = producto.categoria;
+      document.getElementById('fSeccion').value = producto.seccion || '';
       document.getElementById('fCategoria').classList.add('hidden');
       document.getElementById('fCategoria').value = '';
       document.getElementById('fPrecio').value = producto.precio;
@@ -454,6 +463,7 @@
       document.getElementById('productoId').value = '';
       document.getElementById('fNombre').value = '';
       document.getElementById('fCategoriaSelect').value = '';
+      document.getElementById('fSeccion').value = '';
       document.getElementById('fCategoria').classList.add('hidden');
       document.getElementById('fCategoria').value = '';
       document.getElementById('fPrecio').value = '';

@@ -36,7 +36,7 @@
 
 <body class="bg-black text-white min-h-screen flex flex-col">
 
-  <!-- HEADER -->
+  <!-- HEADER (igual en todas las páginas) -->
   <header class="bg-white shadow-md py-4 border-b border-zinc-800 sticky top-0 z-40 md:pl-16">
     <div class="max-w-7xl mx-auto flex items-center justify-between px-4 gap-4">
       <button id="btnMenuMovil" class="md:hidden text-black text-2xl">☰</button>
@@ -46,12 +46,32 @@
         </a>
       </div>
       <div class="flex items-center gap-3">
+        <div class="relative hidden sm:flex items-center">
+          <input id="inputBuscador"
+                 type="text"
+                 placeholder="Buscar..."
+                 class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-32 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
+          <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition" title="Buscar">
+            🔍
+          </button>
+        </div>
         <a href="admin.html" id="linkAdmin" class="hidden text-black text-xl" title="Panel Admin">⚙️</a>
         <button onclick="toggleCarrito()" class="relative text-black text-2xl">
           🛒
           <span id="contadorCarrito" class="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
         </button>
       </div>
+    </div>
+
+    <!-- Buscador móvil -->
+    <div class="sm:hidden px-4 mt-3 flex items-center gap-2">
+      <input id="inputBuscadorMovil"
+             type="text"
+             placeholder="Buscar productos..."
+             class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-black text-sm focus:outline-none focus:ring-2 focus:ring-black"
+             onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
+      <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-lg text-sm" title="Buscar">🔍</button>
     </div>
   </header>
 
@@ -67,7 +87,7 @@
       </h2>
       <ul id="listaCategorias" class="space-y-2 hidden group-hover:block">
         <li>
-          <a href="index.html" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          <a href="listado.html" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
             ← Ver catálogo
           </a>
         </li>
@@ -95,7 +115,7 @@
           <h2 class="text-sm font-semibold text-gray-400 uppercase">Menú</h2>
           <button onclick="toggleMenuMovil()" class="text-white text-xl">✕</button>
         </div>
-        <a href="index.html" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white mb-2">
+        <a href="listado.html" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white mb-2">
           ← Ver catálogo
         </a>
         <ul id="listaCategoriasMovil" class="space-y-2"></ul>
@@ -210,6 +230,13 @@
     const params = new URLSearchParams(window.location.search);
     const productoId = params.get('id');
 
+    // ===== BUSCADOR: manda a listado.html =====
+    function irABuscar() {
+      const texto = (document.getElementById('inputBuscador').value ||
+                     document.getElementById('inputBuscadorMovil').value || '').trim();
+      window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
+    }
+
     async function cargarCategorias() {
       try {
         const snapshot = await db.collection('productos').get();
@@ -223,13 +250,13 @@
           const nombreBonito = cat.charAt(0).toUpperCase() + cat.slice(1);
           listaDesktop.innerHTML += `
             <li>
-              <a href="index.html?categoria=${cat}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+              <a href="listado.html?categoria=${cat}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
                 ${nombreBonito}
               </a>
             </li>`;
           listaMovil.innerHTML += `
             <li>
-              <a href="index.html?categoria=${cat}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+              <a href="listado.html?categoria=${cat}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
                 ${nombreBonito}
               </a>
             </li>`;
