@@ -244,11 +244,35 @@
       try {
         const snapshot = await db.collection('productos').get();
         todosLosProductos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        generarCategoriasSidebar();
         renderizarSecciones();
         actualizarCarritoUI();
       } catch (error) {
         console.error('Error al cargar productos:', error);
       }
+    }
+
+    // ===== SIDEBAR: categorías reales (dinámicas) -> listado.html?categoria=X =====
+    function generarCategoriasSidebar() {
+      const categorias = [...new Set(todosLosProductos.map(p => p.categoria))].sort();
+      const listaDesktop = document.getElementById('listaCategorias');
+      const listaMovil = document.getElementById('listaCategoriasMovil');
+
+      categorias.forEach(cat => {
+        const nombreBonito = cat.charAt(0).toUpperCase() + cat.slice(1);
+        listaDesktop.insertAdjacentHTML('beforeend', `
+          <li>
+            <a href="listado.html?categoria=${encodeURIComponent(cat)}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+              ${nombreBonito}
+            </a>
+          </li>`);
+        listaMovil.insertAdjacentHTML('beforeend', `
+          <li>
+            <a href="listado.html?categoria=${encodeURIComponent(cat)}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+              ${nombreBonito}
+            </a>
+          </li>`);
+      });
     }
 
     function renderizarSecciones() {
@@ -511,7 +535,6 @@
       if (contenedor) contenedor.classList.add('hidden');
     }
 
-    // Botón/Enter 🔍: manda a listado.html con el texto escrito
     function irABuscarIndex() {
       const texto = document.getElementById('inputBuscadorIndex').value.trim();
       window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
