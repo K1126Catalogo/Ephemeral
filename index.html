@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="EPHEMERAL - Ropa deportiva exclusiva con calidad y estilo.">
+  <meta name="description" content="Catálogo 2026 EPHEMERAL - Ropa deportiva exclusiva con calidad y estilo.">
+  <title>EPHEMERAL</title>
+  <link rel="icon" type="image/png" href="images/Logo.png">
 
   <meta property="og:title" content="EPHEMERAL - Catálogo 2026">
   <meta property="og:description" content="Ropa deportiva exclusiva con calidad y estilo.">
@@ -14,8 +16,6 @@
   <meta name="twitter:title" content="EPHEMERAL - Catálogo 2026">
   <meta name="twitter:description" content="Ropa deportiva exclusiva con calidad y estilo.">
   <meta name="twitter:image" content="https://catalogo2026.github.io/Ephemeral/images/LogoCompleto.png">
-  <title>EPHEMERAL</title>
-  <link rel="icon" type="image/png" href="images/Logo.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,23 +23,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
   <style>
+    html, body { overflow-x: hidden; max-width: 100%; }
     body { font-family: 'Inter', sans-serif; }
     .sidebar-scroll::-webkit-scrollbar { width: 4px; }
     .sidebar-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-    .carrusel-scroll::-webkit-scrollbar { height: 6px; }
-    .carrusel-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-    .carrusel-scroll { scroll-snap-type: x mandatory; }
-    .carrusel-item { scroll-snap-align: start; }
-
-    /* Arreglo del bug de Safari/iOS: el header "sticky" a veces no se repinta
-       a su ancho completo cuando el contenido de abajo cambia de altura
-       (justo al terminar de cargar los productos). Forzamos que el header
-       viva en su propia capa de composición para que siempre se repinte bien. */
-    header {
-      -webkit-transform: translateZ(0);
-      transform: translateZ(0);
-      will-change: transform;
-    }
+    .carrusel-scroll::-webkit-scrollbar { display: none; }
+    .carrusel-scroll { scrollbar-width: none; scroll-behavior: smooth; }
   </style>
 
   <!-- Firebase SDK -->
@@ -62,32 +51,20 @@
   </script>
 </head>
 
-<body class="bg-black text-white min-h-dvh flex flex-col">
+<body class="bg-black text-white min-h-screen flex flex-col">
 
-  <!-- HEADER (igual en todas las páginas) -->
-  <header id="headerPrincipal" class="bg-white shadow-md py-4 border-b border-zinc-800 sticky top-0 z-40 md:pl-16">
+  <!-- HEADER -->
+  <header class="bg-white shadow-md py-4 border-b border-zinc-800 sticky top-0 z-40 md:pl-16">
     <div class="max-w-7xl mx-auto flex items-center justify-between px-4 gap-4">
 
       <button id="btnMenuMovil" class="md:hidden text-black text-2xl">☰</button>
 
       <div class="flex-1 flex justify-center">
-        <img src="images/LogoCompleto.png" alt="Logo EPHEMERAL" class="h-12 object-contain cursor-pointer" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+        <img src="images/LogoCompleto.png" alt="Logo EPHEMERAL" class="h-12 object-contain">
       </div>
 
-      <div class="flex items-center gap-3">
-        <div class="relative hidden sm:flex items-center">
-          <input id="inputBuscador"
-                 type="text"
-                 placeholder="Buscar..."
-                 class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-32 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
-                 oninput="filtrarSugerenciasIndex()"
-                 onfocus="filtrarSugerenciasIndex()"
-                 onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
-          <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition" title="Buscar">
-            🔍
-          </button>
-          <div id="sugerenciasBuscador" class="hidden absolute top-full mt-1 left-0 w-72 bg-white rounded-lg shadow-xl max-h-80 overflow-y-auto z-50"></div>
-        </div>
+      <div class="flex items-center gap-4">
+        <a href="listado.html" class="text-black text-2xl" title="Buscar productos">🔍</a>
         <a href="admin.html" id="linkAdmin" class="hidden text-black text-xl" title="Panel Admin">⚙️</a>
         <button onclick="toggleCarrito()" class="relative text-black text-2xl">
           🛒
@@ -96,24 +73,11 @@
       </div>
 
     </div>
-
-    <!-- Buscador móvil -->
-    <div class="sm:hidden px-4 mt-3 relative flex items-center gap-2">
-      <input id="inputBuscadorMovil"
-             type="text"
-             placeholder="Buscar productos..."
-             class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-black text-sm focus:outline-none focus:ring-2 focus:ring-black"
-             oninput="filtrarSugerenciasIndex()"
-             onfocus="filtrarSugerenciasIndex()"
-             onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
-      <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-lg text-sm" title="Buscar">🔍</button>
-      <div id="sugerenciasBuscadorMovil" class="hidden absolute top-full mt-1 left-4 right-4 bg-white rounded-lg shadow-xl max-h-72 overflow-y-auto z-50"></div>
-    </div>
   </header>
 
   <div class="flex flex-1 md:pl-16">
 
-    <!-- SIDEBAR (categorías reales -> mandan a listado.html) -->
+    <!-- SIDEBAR CATEGORÍAS (hover en desktop) -->
     <aside id="sidebar" class="hidden md:flex group fixed top-0 left-0 h-screen w-16 hover:w-56 bg-white border-r border-gray-200 p-4 sidebar-scroll overflow-y-auto overflow-x-hidden transition-all duration-300 flex-col z-50">
       <div class="flex md:group-hover:hidden justify-center items-center h-12 mb-4">
         <span class="text-2xl text-black">☰</span>
@@ -123,14 +87,14 @@
       </h2>
       <ul id="listaCategorias" class="space-y-2 hidden group-hover:block">
         <li>
-          <a href="listado.html" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          <a href="listado.html" data-cat="todos" class="categoria-btn w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
             Todos
           </a>
         </li>
         <li id="liFavoritosDesktop" style="display: none;">
-          <a href="listado.html?favoritos=1" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          <button onclick="irAFavoritos()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
             ❤️ Favoritos
-          </a>
+          </button>
         </li>
       </ul>
 
@@ -149,7 +113,7 @@
       </div>
     </aside>
 
-    <!-- Sidebar móvil -->
+    <!-- Sidebar móvil (overlay) -->
     <div id="sidebarMovil" class="hidden fixed inset-0 bg-black/70 z-50 md:hidden" onclick="toggleMenuMovil()">
       <aside class="w-64 bg-zinc-900 h-full p-4 overflow-y-auto flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
@@ -157,8 +121,16 @@
           <button onclick="toggleMenuMovil()" class="text-white text-xl">✕</button>
         </div>
         <ul id="listaCategoriasMovil" class="space-y-2">
-          <li><a href="listado.html" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">Todos</a></li>
-          <li id="liFavoritosMovil" style="display: none;"><a href="listado.html?favoritos=1" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">❤️ Favoritos</a></li>
+          <li>
+            <a href="listado.html" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+              Todos
+            </a>
+          </li>
+          <li id="liFavoritosMovil" style="display: none;">
+            <button onclick="irAFavoritos()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+              ❤️ Favoritos
+            </button>
+          </li>
         </ul>
 
         <div class="mt-auto pt-4 border-t border-zinc-700">
@@ -176,22 +148,18 @@
       </aside>
     </div>
 
-    <!-- CONTENIDO PRINCIPAL -->
-    <main class="flex-1">
+    <!-- CONTENIDO PRINCIPAL: BIENVENIDA -->
+    <main class="flex-1 min-w-0">
 
-      <!-- HERO: imagen VERTICAL en móvil (edge-to-edge, sin recorte) e imagen HORIZONTAL
-           en escritorio (banner ancho, sin recorte ni zoom raro) -->
-      <div class="w-full bg-black flex flex-col items-center justify-center pb-4 md:pb-6">
-        <img src="images/InicioEphemeral.jpeg" alt="EPHEMERAL" class="block md:hidden w-full h-auto object-contain">
-        <img src="images/InicioEphemeralPC.png" alt="EPHEMERAL" class="hidden md:block w-full h-auto object-contain">
-        <div class="mt-4 flex flex-col items-center gap-2 text-center px-4">
-          <p class="text-xs md:text-sm tracking-[0.2em] uppercase text-gray-300">Conoce nuestras secciones</p>
-          <div class="text-white text-2xl animate-bounce">↓</div>
-        </div>
+      <!-- HERO VERTICAL -->
+      <div class="w-full">
+        <img src="images/InicioEphemeral.jpeg" alt="EPHEMERAL" class="w-full h-[85vh] md:h-[90vh] object-cover">
       </div>
 
-      <!-- SECCIONES (una por cada sección: hombre, mujer, accesorios, ...) -->
-      <div id="contenedorSecciones" class="max-w-7xl mx-auto px-4 md:px-6 py-10 space-y-12"></div>
+      <!-- SECCIONES CON CARRUSEL -->
+      <div id="contenedorSecciones" class="py-10 space-y-14">
+        <!-- Se generan dinámicamente: Hombres, Mujeres, Accesorios -->
+      </div>
 
     </main>
 
@@ -246,21 +214,21 @@
   </footer>
 
   <script>
-    // Orden preferido de secciones; cualquier sección nueva que se agregue en el admin
-    // aparecerá también, al final, en orden alfabético.
-    const ORDEN_SECCIONES = ['hombre', 'mujer', 'accesorios'];
-    const NOMBRES_SECCIONES = { hombre: 'Hombre', mujer: 'Mujer', accesorios: 'Accesorios' };
-
     let todosLosProductos = [];
     let carrito = JSON.parse(sessionStorage.getItem('carrito')) || [];
     let usuarioActual = null;
     let favoritosUsuario = [];
 
+    const SECCIONES = [
+      { clave: 'hombre', titulo: 'Hombres' },
+      { clave: 'mujer', titulo: 'Mujeres' },
+      { clave: 'accesorios', titulo: 'Accesorios' }
+    ];
+
     async function cargarProductos() {
       try {
         const snapshot = await db.collection('productos').get();
         todosLosProductos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        generarCategoriasSidebar();
         renderizarSecciones();
         actualizarCarritoUI();
       } catch (error) {
@@ -268,179 +236,79 @@
       }
     }
 
-    // ===== SIDEBAR: categorías reales (dinámicas) -> listado.html?categoria=X =====
-    function generarCategoriasSidebar() {
-      const categorias = [...new Set(todosLosProductos.map(p => p.categoria))].sort();
-      const listaDesktop = document.getElementById('listaCategorias');
-      const listaMovil = document.getElementById('listaCategoriasMovil');
-
-      categorias.forEach(cat => {
-        const nombreBonito = cat.charAt(0).toUpperCase() + cat.slice(1);
-        listaDesktop.innerHTML += `
-          <li>
-            <a href="listado.html?categoria=${encodeURIComponent(cat)}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
-              ${nombreBonito}
-            </a>
-          </li>`;
-        listaMovil.innerHTML += `
-          <li>
-            <a href="listado.html?categoria=${encodeURIComponent(cat)}" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
-              ${nombreBonito}
-            </a>
-          </li>`;
-      });
-    }
-
-    function nombreBonitoSeccion(sec) {
-      return NOMBRES_SECCIONES[sec] || (sec.charAt(0).toUpperCase() + sec.slice(1));
-    }
-
-    // ===== SECCIONES CON CARRUSEL (tarjeta completa: favorito, añadir, comprar) =====
     function renderizarSecciones() {
       const contenedor = document.getElementById('contenedorSecciones');
       contenedor.innerHTML = '';
 
-      const seccionesPresentes = [...new Set(todosLosProductos.map(p => p.seccion).filter(Boolean))];
-      const ordenadas = [
-        ...ORDEN_SECCIONES.filter(s => seccionesPresentes.includes(s)),
-        ...seccionesPresentes.filter(s => !ORDEN_SECCIONES.includes(s)).sort()
-      ];
-
-      ordenadas.forEach(sec => {
-        const productosSeccion = todosLosProductos.filter(p => p.seccion === sec);
+      SECCIONES.forEach(seccion => {
+        const productosSeccion = todosLosProductos.filter(p => p.seccion === seccion.clave);
         if (productosSeccion.length === 0) return;
+
+        const idCarrusel = `carrusel-${seccion.clave}`;
 
         const bloque = document.createElement('div');
         bloque.innerHTML = `
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl md:text-2xl font-bold">${nombreBonitoSeccion(sec)}</h2>
-            <a href="listado.html?seccion=${encodeURIComponent(sec)}" class="text-sm text-gray-400 hover:text-white transition">Ver todo →</a>
+          <div class="max-w-7xl mx-auto px-4 md:px-8">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-2xl md:text-3xl font-bold">${seccion.titulo}</h2>
+              <a href="listado.html?seccion=${seccion.clave}" class="text-sm text-gray-400 hover:text-white transition whitespace-nowrap">
+                Ver todo →
+              </a>
+            </div>
           </div>
-          <div class="carrusel-scroll flex gap-4 overflow-x-auto pb-3">
-            ${productosSeccion.map(p => `
-              <div class="carrusel-item flex-shrink-0 w-44 md:w-52 bg-zinc-900 rounded-xl p-3 hover:scale-105 transition duration-300">
-                <div class="relative cursor-pointer" onclick="window.location.href='producto.html?id=${p.id}'">
-                  <img src="${p.imagenes[0]}" alt="${p.nombre}" loading="lazy" class="rounded-lg mb-2 w-full h-40 md:h-48 object-cover">
-                  <button onclick="event.stopPropagation(); toggleFavorito('${p.id}', this)"
-                          class="favorito-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-lg">
-                    ${favoritosUsuario.includes(p.id) ? '❤️' : '🤍'}
-                  </button>
+          <div class="relative">
+            <div id="${idCarrusel}" class="carrusel-scroll flex gap-4 overflow-x-auto px-4 md:px-8 pb-2"
+                 onmouseenter="pausarCarrusel('${idCarrusel}')" onmouseleave="reanudarCarrusel('${idCarrusel}')">
+              ${productosSeccion.map(p => `
+                <div onclick="window.location.href='producto.html?id=${p.id}'"
+                     class="flex-shrink-0 w-44 md:w-56 bg-zinc-900 rounded-xl p-3 cursor-pointer hover:scale-105 transition duration-300">
+                  <div class="relative">
+                    <img src="${p.imagenes[0]}" alt="${p.nombre}" loading="lazy" class="rounded-lg mb-3 w-full h-40 md:h-56 object-cover">
+                    <button onclick="event.stopPropagation(); toggleFavorito('${p.id}', this)"
+                            class="favorito-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-lg">
+                      ${favoritosUsuario.includes(p.id) ? '❤️' : '🤍'}
+                    </button>
+                  </div>
+                  <p class="text-sm font-semibold truncate">${p.nombre}</p>
+                  <p class="text-gray-400 text-xs">$${p.precio} MXN</p>
                 </div>
-                <h3 class="text-sm font-semibold truncate cursor-pointer" onclick="window.location.href='producto.html?id=${p.id}'">${p.nombre}</h3>
-                <p class="text-gray-400 text-xs mb-2">$${p.precio} MXN</p>
-                <div class="flex gap-2">
-                  <button onclick='agregarAlCarritoRapido(${JSON.stringify(p)})' class="flex-1 bg-zinc-700 hover:bg-zinc-600 transition text-white px-2 py-1.5 rounded-lg text-xs font-semibold">
-                    Añadir
-                  </button>
-                  <button onclick="window.location.href='producto.html?id=${p.id}'" class="flex-1 bg-green-500 hover:bg-green-600 transition text-white px-2 py-1.5 rounded-lg text-xs font-semibold">
-                    Compra ya
-                  </button>
-                </div>
-              </div>
-            `).join('')}
+              `).join('')}
+            </div>
           </div>
         `;
         contenedor.appendChild(bloque);
+
+        iniciarAutoScroll(idCarrusel);
       });
     }
 
-    // ===== BUSCADOR: sugerencias en vivo (igual que listado.html) =====
-    function normalizarTexto(str) {
-      return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    }
+    // ===== CARRUSEL AUTOMÁTICO + DESLIZABLE =====
+    const intervalosCarrusel = {};
 
-    function obtenerTextoBusquedaIndex() {
-      return document.getElementById('inputBuscador').value ||
-             document.getElementById('inputBuscadorMovil').value || '';
-    }
-
-    function filtrarSugerenciasIndex() {
-      const textoCrudo = obtenerTextoBusquedaIndex();
-      const texto = normalizarTexto(textoCrudo);
-
-      if (!texto) {
-        ocultarSugerencias();
-        return;
-      }
-
-      const filtrados = todosLosProductos.filter(p => normalizarTexto(p.nombre).includes(texto));
-      mostrarSugerencias(filtrados, texto);
-    }
-
-    function mostrarSugerencias(filtrados, textoBusqueda) {
-      const resultados = filtrados.slice(0, 6);
-      ['sugerenciasBuscador', 'sugerenciasBuscadorMovil'].forEach(contenedorId => {
-        const contenedor = document.getElementById(contenedorId);
-        if (!contenedor) return;
-        if (resultados.length === 0) {
-          contenedor.innerHTML = `<p class="text-sm text-gray-500 p-3">Sin resultados para "${textoBusqueda}"</p>`;
+    function iniciarAutoScroll(idCarrusel) {
+      intervalosCarrusel[idCarrusel] = setInterval(() => {
+        const el = document.getElementById(idCarrusel);
+        if (!el) return;
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        if (el.scrollLeft >= maxScroll - 5) {
+          el.scrollTo({ left: 0, behavior: 'smooth' });
         } else {
-          contenedor.innerHTML = resultados.map(p => `
-            <div onclick="window.location.href='producto.html?id=${p.id}'"
-                 class="flex items-center gap-3 p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0">
-              <img src="${p.imagenes[0]}" class="w-10 h-10 object-cover rounded">
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-black truncate">${p.nombre}</p>
-                <p class="text-xs text-gray-500">$${p.precio} MXN</p>
-              </div>
-            </div>
-          `).join('');
+          el.scrollBy({ left: 220, behavior: 'smooth' });
         }
-        contenedor.classList.remove('hidden');
-      });
+      }, 3000);
     }
 
-    function ocultarSugerencias() {
-      const d = document.getElementById('sugerenciasBuscador');
-      const m = document.getElementById('sugerenciasBuscadorMovil');
-      if (d) d.classList.add('hidden');
-      if (m) m.classList.add('hidden');
+    function pausarCarrusel(idCarrusel) {
+      clearInterval(intervalosCarrusel[idCarrusel]);
     }
 
-    // Botón/Enter 🔍: manda a listado.html con el texto de búsqueda
-    function irABuscar() {
-      const texto = obtenerTextoBusquedaIndex().trim();
-      window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
+    function reanudarCarrusel(idCarrusel) {
+      iniciarAutoScroll(idCarrusel);
     }
 
     // ===== CARRITO =====
-    function agregarAlCarritoRapido(producto) {
-      let talla = 'Única';
-      let stockDisponible = producto.stock || 0;
-
-      if (producto.tallas && producto.tallas.length > 0 && typeof producto.tallas[0] === 'object') {
-        const tallaConStock = producto.tallas.find(t => t.stock > 0);
-        if (!tallaConStock) {
-          alert('Este producto no tiene stock disponible en ninguna talla.');
-          return;
-        }
-        talla = tallaConStock.nombre;
-        stockDisponible = tallaConStock.stock;
-      }
-
-      const claveUnica = `${producto.id}-${talla}`;
-      const existente = carrito.find(item => item.claveUnica === claveUnica);
-
-      if (existente) {
-        if (existente.cantidad >= stockDisponible) {
-          alert(`Ya tienes el máximo disponible (${stockDisponible}) de "${producto.nombre}" (talla ${talla}) en tu carrito.`);
-          return;
-        }
-        existente.cantidad += 1;
-      } else {
-        carrito.push({
-          id: producto.id,
-          nombre: producto.nombre,
-          precio: producto.precio,
-          imagenes: producto.imagenes,
-          talla: talla,
-          cantidad: 1,
-          claveUnica
-        });
-      }
-      guardarCarrito();
-      actualizarCarritoUI();
-      toggleCarrito();
+    function guardarCarrito() {
+      sessionStorage.setItem('carrito', JSON.stringify(carrito));
     }
 
     function actualizarCarritoUI() {
@@ -484,19 +352,28 @@
       document.getElementById('totalPrecio').textContent = `$${total} MXN`;
     }
 
-    function guardarCarrito() {
-      sessionStorage.setItem('carrito', JSON.stringify(carrito));
-    }
-
-    function quitarDelCarrito(clave) {
-      carrito = carrito.filter(item => (item.claveUnica || item.id) !== clave);
-      guardarCarrito();
-      actualizarCarritoUI();
+    function obtenerStockLocal(productoId, talla) {
+      const producto = todosLosProductos.find(p => p.id === productoId);
+      if (!producto) return null;
+      if (producto.tallas && producto.tallas.length > 0 && typeof producto.tallas[0] === 'object') {
+        const t = producto.tallas.find(t => t.nombre === talla);
+        return t ? t.stock : 0;
+      }
+      return producto.stock || 0;
     }
 
     function cambiarCantidad(clave, delta) {
       const item = carrito.find(i => (i.claveUnica || i.id) === clave);
       if (!item) return;
+
+      if (delta > 0) {
+        const stock = obtenerStockLocal(item.id, item.talla);
+        if (stock !== null && item.cantidad >= stock) {
+          alert(`No hay más stock disponible de "${item.nombre}" (talla ${item.talla}). Stock: ${stock}.`);
+          return;
+        }
+      }
+
       item.cantidad += delta;
       if (item.cantidad <= 0) {
         quitarDelCarrito(clave);
@@ -504,6 +381,12 @@
         guardarCarrito();
         actualizarCarritoUI();
       }
+    }
+
+    function quitarDelCarrito(clave) {
+      carrito = carrito.filter(item => (item.claveUnica || item.id) !== clave);
+      guardarCarrito();
+      actualizarCarritoUI();
     }
 
     function toggleCarrito() {
@@ -514,19 +397,14 @@
       document.getElementById('sidebarMovil').classList.toggle('hidden');
     }
 
-    // ===== LOGIN =====
-    function iniciarSesionGoogle() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).catch(error => console.error('Error al iniciar sesión:', error));
-    }
-
-    function cerrarSesionUsuario() {
-      auth.signOut();
-    }
+    document.getElementById('btnMenuMovil').addEventListener('click', toggleMenuMovil);
 
     // ===== FAVORITOS =====
     async function cargarFavoritos() {
-      if (!usuarioActual) { favoritosUsuario = []; return; }
+      if (!usuarioActual) {
+        favoritosUsuario = [];
+        return;
+      }
       try {
         const snapshot = await db.collection('usuarios').doc(usuarioActual.uid).collection('favoritos').get();
         favoritosUsuario = snapshot.docs.map(doc => doc.id);
@@ -570,6 +448,22 @@
       if (liMovil) liMovil.style.display = visible;
     }
 
+    function irAFavoritos() {
+      window.location.href = 'listado.html?favoritos=1';
+    }
+
+    // ===== LOGIN USUARIO (Google) =====
+    function iniciarSesionGoogle() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(error => {
+        console.error('Error al iniciar sesión:', error);
+      });
+    }
+
+    function cerrarSesionUsuario() {
+      auth.signOut();
+    }
+
     auth.onAuthStateChanged(user => {
       usuarioActual = user;
 
@@ -583,7 +477,6 @@
       const btnLogin = document.getElementById('btnLogin');
       const usuarioInfo = document.getElementById('usuarioInfo');
       const fotoUsuario = document.getElementById('fotoUsuario');
-      const nombreUsuario = document.getElementById('nombreUsuario');
 
       const btnLoginMovil = document.getElementById('btnLoginMovil');
       const usuarioInfoMovil = document.getElementById('usuarioInfoMovil');
@@ -595,7 +488,6 @@
         usuarioInfo.classList.remove('hidden');
         usuarioInfo.classList.add('flex');
         fotoUsuario.src = user.photoURL || 'images/Logo.png';
-        nombreUsuario.textContent = user.displayName || user.email;
 
         btnLoginMovil.classList.add('hidden');
         usuarioInfoMovil.classList.remove('hidden');
@@ -613,17 +505,7 @@
       }
 
       actualizarVisibilidadFavoritos();
-      cargarFavoritos().then(() => {
-        if (todosLosProductos.length > 0) renderizarSecciones();
-      });
-    });
-
-    document.getElementById('btnMenuMovil').addEventListener('click', toggleMenuMovil);
-
-    document.addEventListener('click', (e) => {
-      const dentroDesktop = document.getElementById('inputBuscador')?.parentElement.contains(e.target);
-      const dentroMovil = document.getElementById('inputBuscadorMovil')?.parentElement.contains(e.target);
-      if (!dentroDesktop && !dentroMovil) ocultarSugerencias();
+      cargarFavoritos().then(() => renderizarSecciones());
     });
 
     window.addEventListener('DOMContentLoaded', cargarProductos);
