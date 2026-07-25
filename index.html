@@ -64,7 +64,14 @@
       </div>
 
       <div class="flex items-center gap-4">
-        <a href="listado.html" class="text-black text-2xl" title="Buscar productos">🔍</a>
+        <div class="flex items-center">
+          <input id="inputBuscadorIndex" type="text" placeholder="Buscar..."
+                 class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-24 sm:w-40 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscarIndex();}">
+          <button onclick="irABuscarIndex()" class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition" title="Buscar">
+            🔍
+          </button>
+        </div>
         <a href="admin.html" id="linkAdmin" class="hidden text-black text-xl" title="Panel Admin">⚙️</a>
         <button onclick="toggleCarrito()" class="relative text-black text-2xl">
           🛒
@@ -455,6 +462,12 @@
 
     function irAFavoritos() {
       window.location.href = 'listado.html?favoritos=1';
+    }
+
+    // ===== BUSCADOR (dinámico): manda a listado.html con el texto escrito =====
+    function irABuscarIndex() {
+      const texto = document.getElementById('inputBuscadorIndex').value.trim();
+      window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
     }
 
     // ===== LOGIN USUARIO (Google) =====
