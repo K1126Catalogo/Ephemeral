@@ -65,7 +65,7 @@
 <body class="bg-black text-white min-h-dvh flex flex-col">
 
   <!-- HEADER (igual en todas las páginas) -->
-  <header id="headerPrincipal" class="bg-white shadow-md py-4 border-b border-zinc-800 fixed top-0 left-0 right-0 z-40 md:pl-16">
+  <header id="headerPrincipal" class="bg-white shadow-md py-4 border-b border-zinc-800 sticky top-0 z-40 md:pl-16">
     <div class="max-w-7xl mx-auto flex items-center justify-between px-4 gap-4">
 
       <button id="btnMenuMovil" class="md:hidden text-black text-2xl">☰</button>
@@ -110,11 +110,6 @@
       <div id="sugerenciasBuscadorMovil" class="hidden absolute top-full mt-1 left-4 right-4 bg-white rounded-lg shadow-xl max-h-72 overflow-y-auto z-50"></div>
     </div>
   </header>
-
-  <!-- Espaciador: ocupa el mismo alto que el header (que ahora es "fixed", fuera del flujo)
-       para que el contenido de abajo no quede tapado. Su altura exacta se calcula por JS
-       porque el header mide distinto en móvil (2 filas) que en escritorio (1 fila). -->
-  <div id="headerSpacer"></div>
 
   <div class="flex flex-1 md:pl-16">
 
@@ -251,23 +246,6 @@
   </footer>
 
   <script>
-    // ===== ESPACIADOR DEL HEADER (fixed) =====
-    // El header mide distinto en móvil (2 filas: logo+iconos, y abajo el buscador)
-    // que en escritorio (1 sola fila). Medimos su altura real y se la damos al
-    // espaciador para que el contenido nunca quede tapado, sin depender de "sticky"
-    // (que es lo que causaba el glitch de repintado en Safari/iOS).
-    function ajustarEspaciadorHeader() {
-      const header = document.getElementById('headerPrincipal');
-      const spacer = document.getElementById('headerSpacer');
-      if (header && spacer) {
-        spacer.style.height = header.offsetHeight + 'px';
-      }
-    }
-    ajustarEspaciadorHeader();
-    window.addEventListener('resize', ajustarEspaciadorHeader);
-    window.addEventListener('orientationchange', ajustarEspaciadorHeader);
-    window.addEventListener('load', ajustarEspaciadorHeader);
-
     // Orden preferido de secciones; cualquier sección nueva que se agregue en el admin
     // aparecerá también, al final, en orden alfabético.
     const ORDEN_SECCIONES = ['hombre', 'mujer', 'accesorios'];
