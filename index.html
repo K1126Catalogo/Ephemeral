@@ -64,13 +64,16 @@
       </div>
 
       <div class="flex items-center gap-4">
-        <div class="flex items-center">
+        <div class="relative flex items-center">
           <input id="inputBuscadorIndex" type="text" placeholder="Buscar..."
                  class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-24 sm:w-40 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
+                 oninput="filtrarSugerenciasIndex()"
+                 onfocus="filtrarSugerenciasIndex()"
                  onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscarIndex();}">
           <button onclick="irABuscarIndex()" class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition" title="Buscar">
             🔍
           </button>
+          <div id="sugerenciasBuscadorIndex" class="hidden absolute top-full mt-1 right-0 w-72 bg-white rounded-lg shadow-xl max-h-80 overflow-y-auto z-50"></div>
         </div>
         <a href="admin.html" id="linkAdmin" class="hidden text-black text-xl" title="Panel Admin">⚙️</a>
         <button onclick="toggleCarrito()" class="relative text-black text-2xl">
@@ -464,11 +467,60 @@
       window.location.href = 'listado.html?favoritos=1';
     }
 
-    // ===== BUSCADOR (dinámico): manda a listado.html con el texto escrito =====
+    // ===== BUSCADOR (dinámico): sugerencias en vivo con tarjeta miniatura =====
+    function normalizarTexto(str) {
+      return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function filtrarSugerenciasIndex() {
+      const textoCrudo = document.getElementById('inputBuscadorIndex').value;
+      const texto = normalizarTexto(textoCrudo);
+
+      if (!texto) {
+        ocultarSugerenciasIndex();
+        return;
+      }
+
+      const filtrados = todosLosProductos.filter(p => normalizarTexto(p.nombre).includes(texto));
+      mostrarSugerenciasIndex(filtrados, texto);
+    }
+
+    function mostrarSugerenciasIndex(filtrados, textoBusqueda) {
+      const contenedor = document.getElementById('sugerenciasBuscadorIndex');
+      const resultados = filtrados.slice(0, 6);
+
+      if (resultados.length === 0) {
+        contenedor.innerHTML = `<p class="text-sm text-gray-500 p-3">Sin resultados para "${textoBusqueda}"</p>`;
+      } else {
+        contenedor.innerHTML = resultados.map(p => `
+          <div onclick="window.location.href='producto.html?id=${p.id}'"
+               class="flex items-center gap-3 p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0">
+            <img src="${p.imagenes[0]}" class="w-10 h-10 object-cover rounded">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-black truncate">${p.nombre}</p>
+              <p class="text-xs text-gray-500">$${p.precio} MXN</p>
+            </div>
+          </div>
+        `).join('');
+      }
+      contenedor.classList.remove('hidden');
+    }
+
+    function ocultarSugerenciasIndex() {
+      const contenedor = document.getElementById('sugerenciasBuscadorIndex');
+      if (contenedor) contenedor.classList.add('hidden');
+    }
+
+    // Botón/Enter 🔍: manda a listado.html con el texto escrito
     function irABuscarIndex() {
       const texto = document.getElementById('inputBuscadorIndex').value.trim();
       window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
     }
+
+    document.addEventListener('click', (e) => {
+      const dentroBuscador = document.getElementById('inputBuscadorIndex')?.parentElement.contains(e.target);
+      if (!dentroBuscador) ocultarSugerenciasIndex();
+    });
 
     // ===== LOGIN USUARIO (Google) =====
     function iniciarSesionGoogle() {
