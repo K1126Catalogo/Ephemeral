@@ -46,7 +46,7 @@
     <div id="vistaFormulario">
       <h1 class="text-2xl font-bold mb-6">Confirmar pedido</h1>
 
-      <!-- RESUMEN -->
+      <!-- RESUMEN (editable: cantidad +/- y eliminar) -->
       <div class="bg-zinc-900 rounded-2xl p-5 mb-6">
         <h2 class="text-lg font-semibold mb-4">Resumen de tu pedido</h2>
         <div id="resumenItems" class="space-y-3 mb-4"></div>
@@ -206,9 +206,69 @@
     let direccionSeleccionadaId = null;
     let numeroPedidoGenerado = null;
     let subtotalCalculado = 0;
+    let stockPorProducto = {}; // { productoId: { tallas: [...] , stock: N } } — para topar cantidades en vivo
+
+    function obtenerClave(item) {
+      return item.claveUnica || `${item.id}-${item.talla || 'Única'}`;
+    }
 
     function calcularSubtotal() {
       return carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+    }
+
+    // Trae el stock real de cada producto en el carrito (una sola vez por producto),
+    // para poder topar el botón "+" sin dejar pedir de más.
+    async function cargarStockDelCarrito() {
+      const idsUnicos = [...new Set(carrito.map(item => item.id))];
+      await Promise.all(idsUnicos.map(async id => {
+        try {
+          const doc = await db.collection('productos').doc(id).get();
+          if (doc.exists) stockPorProducto[id] = doc.data();
+        } catch (error) {
+          console.error('Error al cargar stock de', id, error);
+        }
+      }));
+    }
+
+    function obtenerStockDisponible(item) {
+      const producto = stockPorProducto[item.id];
+      if (!producto) return null; // desconocido: no topamos, se validará al confirmar
+      if (producto.tallas && producto.tallas.length > 0 && typeof producto.tallas[0] === 'object') {
+        const t = producto.tallas.find(t => t.nombre === item.talla);
+        return t ? t.stock : 0;
+      }
+      return producto.stock ?? null;
+    }
+
+    function guardarCarritoStorage() {
+      sessionStorage.setItem('carrito', JSON.stringify(carrito));
+    }
+
+    function cambiarCantidadPedido(clave, delta) {
+      const item = carrito.find(i => obtenerClave(i) === clave);
+      if (!item) return;
+
+      if (delta > 0) {
+        const stock = obtenerStockDisponible(item);
+        if (stock !== null && item.cantidad >= stock) {
+          alert(`No hay más stock disponible de "${item.nombre}" (talla ${item.talla || 'Única'}). Stock: ${stock}.`);
+          return;
+        }
+      }
+
+      item.cantidad += delta;
+      if (item.cantidad <= 0) {
+        quitarDelCarritoPedido(clave);
+        return;
+      }
+      guardarCarritoStorage();
+      renderizarResumen();
+    }
+
+    function quitarDelCarritoPedido(clave) {
+      carrito = carrito.filter(i => obtenerClave(i) !== clave);
+      guardarCarritoStorage();
+      renderizarResumen();
     }
 
     function renderizarResumen() {
@@ -221,16 +281,26 @@
       const resumen = document.getElementById('resumenItems');
       subtotalCalculado = calcularSubtotal();
 
-      resumen.innerHTML = carrito.map(item => `
+      resumen.innerHTML = carrito.map(item => {
+        const clave = obtenerClave(item);
+        return `
         <div class="flex gap-3 items-center">
           <img src="${item.imagenes[0]}" class="w-14 h-14 object-cover rounded-lg">
           <div class="flex-1">
             <p class="text-sm font-medium">${item.nombre}</p>
-            <p class="text-xs text-gray-400">Talla: ${item.talla || 'Única'} · Cantidad: ${item.cantidad}</p>
+            <p class="text-xs text-gray-400 mb-1">Talla: ${item.talla || 'Única'}</p>
+            <div class="flex items-center gap-2">
+              <button onclick="cambiarCantidadPedido('${clave}', -1)" class="bg-zinc-700 hover:bg-zinc-600 transition w-6 h-6 rounded text-sm">-</button>
+              <span class="text-sm w-4 text-center">${item.cantidad}</span>
+              <button onclick="cambiarCantidadPedido('${clave}', 1)" class="bg-zinc-700 hover:bg-zinc-600 transition w-6 h-6 rounded text-sm">+</button>
+            </div>
           </div>
-          <p class="text-sm font-semibold">$${item.precio * item.cantidad} MXN</p>
-        </div>
-      `).join('');
+          <div class="flex flex-col items-end gap-2">
+            <p class="text-sm font-semibold">$${item.precio * item.cantidad} MXN</p>
+            <button onclick="quitarDelCarritoPedido('${clave}')" class="text-red-500 text-xs hover:underline">Eliminar</button>
+          </div>
+        </div>`;
+      }).join('');
 
       document.getElementById('subtotalTexto').textContent = `$${subtotalCalculado} MXN`;
     }
@@ -439,7 +509,10 @@
       }
     });
 
-    window.addEventListener('DOMContentLoaded', renderizarResumen);
+    window.addEventListener('DOMContentLoaded', () => {
+      renderizarResumen();
+      cargarStockDelCarrito().then(() => renderizarResumen());
+    });
   </script>
 
 </body>
