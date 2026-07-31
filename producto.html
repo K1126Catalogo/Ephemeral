@@ -12,6 +12,8 @@
     .sidebar-scroll::-webkit-scrollbar { width: 4px; }
     .sidebar-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
     .zoom-container { cursor: zoom-in; overflow: hidden; position: relative; }
+    .carrusel-scroll::-webkit-scrollbar { display: none; }
+    .carrusel-scroll { scrollbar-width: none; scroll-behavior: smooth; }
   </style>
 
   <!-- Firebase SDK -->
@@ -191,6 +193,15 @@
 
       </div>
 
+      <!-- TAMBIÉN TE PUEDE INTERESAR (carrusel automático + deslizable, igual que en index.html) -->
+      <div id="seccionRelacionados" class="hidden max-w-7xl mx-auto mt-16">
+        <h2 class="text-2xl md:text-3xl font-bold mb-4">También te puede interesar</h2>
+        <div class="relative -mx-4 md:-mx-8">
+          <div id="carrusel-relacionados" class="carrusel-scroll flex gap-4 overflow-x-auto px-4 md:px-8 pb-2"
+               onmouseenter="pausarCarruselRelacionados()" onmouseleave="reanudarCarruselRelacionados()"></div>
+        </div>
+      </div>
+
       <p id="productoNoEncontrado" class="hidden text-center text-gray-500 py-20">Producto no encontrado.</p>
     </main>
   </div>
@@ -222,6 +233,30 @@
     <img id="imgZoom" src="" class="max-w-full max-h-full object-contain">
   </div>
 
+  <!-- FOOTER -->
+  <footer class="bg-white text-black border-t border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 md:grid-cols-3 items-center text-center gap-3">
+      <div class="flex justify-center md:justify-start">
+        <img src="images/Logo.png" alt="Logo EPHEMERAL" class="h-8 object-contain">
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold tracking-wide">EPHEMERAL</h3>
+        <p class="text-xs text-gray-600">Calidad • Estilo • Exclusividad</p>
+        <div class="mt-1 flex items-center justify-center gap-2">
+          <a href="https://instagram.com/ephemeral_gym_clothes" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1 group transition">
+            <img src="images/LogoInsta.png" alt="Instagram EPHEMERAL" class="h-4 w-4 object-contain">
+            <span class="text-xs text-gray-700 font-medium border-b border-transparent group-hover:border-black transition duration-300">
+              ephemeral_gym_clothes
+            </span>
+          </a>
+        </div>
+      </div>
+      <div class="flex justify-center md:justify-end">
+        <img src="images/LogoLetras.png" alt="Logo letras EPHEMERAL" class="h-8 object-contain">
+      </div>
+    </div>
+  </footer>
+
   <script>
     const TALLAS_DEFAULT = ["Chica", "Mediana", "Grande", "Extra Grande"];
     let producto = null;
@@ -230,15 +265,23 @@
     let cantidadSeleccionada = 1;
     let carrito = JSON.parse(sessionStorage.getItem('carrito')) || [];
     let indiceImagenActual = 0;
+    let todosLosProductos = [];
 
     const params = new URLSearchParams(window.location.search);
     const productoId = params.get('id');
 
+    // Compatibilidad con productos viejos (campo "seccion" string) y arreglo del valor
+    // viejo "accesorio" (singular) -> "accesorios" (plural, el que usa el resto del sitio).
+    function obtenerSeccionesDeProducto(p) {
+      const arr = Array.isArray(p.secciones) ? p.secciones : (p.seccion ? [p.seccion] : []);
+      return arr.map(c => c === 'accesorio' ? 'accesorios' : c);
+    }
+
     async function cargarCategorias() {
       try {
         const snapshot = await db.collection('productos').get();
-        const productos = snapshot.docs.map(doc => doc.data());
-        const categorias = [...new Set(productos.map(p => p.categoria))];
+        todosLosProductos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const categorias = [...new Set(todosLosProductos.map(p => p.categoria))];
 
         const listaDesktop = document.getElementById('listaCategorias');
         const listaMovil = document.getElementById('listaCategoriasMovil');
@@ -321,6 +364,109 @@
     function irAImagen(indice) {
       indiceImagenActual = indice;
       document.getElementById('imgPrincipal').src = producto.imagenes[indiceImagenActual];
+    }
+
+    // ===== TAMBIÉN TE PUEDE INTERESAR =====
+    function barajar(arr) {
+      const copia = [...arr];
+      for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+      }
+      return copia;
+    }
+
+    function renderizarRelacionados() {
+      if (!producto || todosLosProductos.length === 0) return;
+
+      const misSecciones = obtenerSeccionesDeProducto(producto);
+
+      // Prioridad: misma categoría o alguna sección en común con el producto actual
+      let relacionados = todosLosProductos.filter(p =>
+        p.id !== producto.id &&
+        (p.categoria === producto.categoria || obtenerSeccionesDeProducto(p).some(s => misSecciones.includes(s)))
+      );
+      relacionados = barajar(relacionados);
+
+      // Si no hay suficientes relacionados, se completa con productos aleatorios del resto
+      if (relacionados.length < 10) {
+        const idsYaIncluidos = new Set(relacionados.map(p => p.id));
+        const resto = todosLosProductos.filter(p => p.id !== producto.id && !idsYaIncluidos.has(p.id));
+        relacionados = relacionados.concat(barajar(resto));
+      }
+
+      relacionados = relacionados.slice(0, 12);
+      if (relacionados.length === 0) return;
+
+      document.getElementById('seccionRelacionados').classList.remove('hidden');
+      const contenedor = document.getElementById('carrusel-relacionados');
+      contenedor.innerHTML = relacionados.map(p => `
+        <div onclick="window.location.href='producto.html?id=${p.id}'"
+             class="flex-shrink-0 w-44 md:w-56 bg-zinc-900 rounded-xl p-3 cursor-pointer hover:scale-105 transition duration-300">
+          <div class="relative">
+            <img src="${p.imagenes[0]}" alt="${p.nombre}" loading="lazy" class="rounded-lg mb-3 w-full h-40 md:h-56 object-cover">
+            <button onclick="event.stopPropagation(); toggleFavoritoRelacionado('${p.id}', this)"
+                    class="favorito-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-lg">
+              ${favoritosUsuario.includes(p.id) ? '❤️' : '🤍'}
+            </button>
+          </div>
+          <p class="text-sm font-semibold truncate">${p.nombre}</p>
+          <p class="text-gray-400 text-xs">$${p.precio} MXN</p>
+        </div>
+      `).join('');
+
+      iniciarAutoScrollRelacionados();
+    }
+
+    async function toggleFavoritoRelacionado(productoId, btn) {
+      if (!usuarioActual) {
+        if (confirm('Necesitas iniciar sesión para guardar favoritos. ¿Iniciar sesión ahora?')) {
+          iniciarSesionGoogle();
+        }
+        return;
+      }
+
+      const ref = db.collection('usuarios').doc(usuarioActual.uid).collection('favoritos').doc(productoId);
+      const yaEsFavorito = favoritosUsuario.includes(productoId);
+
+      try {
+        if (yaEsFavorito) {
+          await ref.delete();
+          favoritosUsuario = favoritosUsuario.filter(id => id !== productoId);
+          btn.textContent = '🤍';
+        } else {
+          await ref.set({ fecha: firebase.firestore.FieldValue.serverTimestamp() });
+          favoritosUsuario.push(productoId);
+          btn.textContent = '❤️';
+        }
+      } catch (error) {
+        alert('Error al actualizar favoritos: ' + error.message);
+      }
+    }
+
+    // Auto-scroll (se pausa al pasar el mouse encima, igual que en index.html)
+    let intervaloCarruselRelacionados = null;
+
+    function iniciarAutoScrollRelacionados() {
+      clearInterval(intervaloCarruselRelacionados);
+      intervaloCarruselRelacionados = setInterval(() => {
+        const el = document.getElementById('carrusel-relacionados');
+        if (!el) return;
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        if (el.scrollLeft >= maxScroll - 5) {
+          el.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          el.scrollBy({ left: 220, behavior: 'smooth' });
+        }
+      }, 3000);
+    }
+
+    function pausarCarruselRelacionados() {
+      clearInterval(intervaloCarruselRelacionados);
+    }
+
+    function reanudarCarruselRelacionados() {
+      iniciarAutoScrollRelacionados();
     }
 
     function imagenAnterior(e) {
@@ -588,7 +734,10 @@
       }
 
       actualizarVisibilidadFavoritos();
-      cargarFavoritosProducto().then(() => actualizarBotonFavorito());
+      cargarFavoritosProducto().then(() => {
+        actualizarBotonFavorito();
+        renderizarRelacionados();
+      });
     });
 
     function actualizarVisibilidadFavoritos() {
@@ -654,9 +803,9 @@
 
     document.getElementById('btnMenuMovil').addEventListener('click', toggleMenuMovil);
 
-    window.addEventListener('DOMContentLoaded', () => {
-      cargarProducto();
-      cargarCategorias();
+    window.addEventListener('DOMContentLoaded', async () => {
+      await Promise.all([cargarProducto(), cargarCategorias()]);
+      renderizarRelacionados();
     });
   </script>
 
