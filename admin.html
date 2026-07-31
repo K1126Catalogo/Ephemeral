@@ -270,6 +270,7 @@
         cargarListaProductos();
         cargarPedidos();
         cargarSeccionesPersonalizadas();
+        iniciarListenerNuevosPedidos();
       } else {
         document.getElementById('loginScreen').classList.remove('hidden');
         document.getElementById('panelAdmin').classList.add('hidden');
@@ -711,6 +712,65 @@
         contador.classList.remove('hidden');
       } else {
         contador.classList.add('hidden');
+      }
+    }
+
+    // ===== NOTIFICACIÓN DE PEDIDOS NUEVOS (tiempo real, sin recargar) =====
+    let listenerPedidosPendientes = null;
+    let primeraCargaListenerPendientes = true;
+
+    function iniciarListenerNuevosPedidos() {
+      if (listenerPedidosPendientes) return; // ya está activo, no duplicar
+
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+
+      listenerPedidosPendientes = db.collection('pedidos').where('estado', '==', 'pendiente')
+        .onSnapshot(snapshot => {
+          if (!primeraCargaListenerPendientes) {
+            snapshot.docChanges().forEach(change => {
+              if (change.type === 'added') {
+                notificarPedidoNuevo({ id: change.doc.id, ...change.doc.data() });
+              }
+            });
+          }
+          primeraCargaListenerPendientes = false;
+
+          pedidosPendientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          pedidosPendientes.sort((a, b) => (b.fechaCreacion?.seconds || 0) - (a.fechaCreacion?.seconds || 0));
+          filtrarPedidos();
+          actualizarContadorPendientes();
+        }, error => {
+          console.error('Error en el listener de pedidos pendientes:', error);
+        });
+    }
+
+    function reproducirSonidoAlerta() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      } catch (error) {
+        console.error('No se pudo reproducir el sonido de alerta:', error);
+      }
+    }
+
+    function notificarPedidoNuevo(pedido) {
+      reproducirSonidoAlerta();
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('📦 Nuevo pedido recibido', {
+          body: `Pedido #${pedido.numeroPedido} · $${pedido.subtotal} MXN`,
+          icon: 'images/Logo.png'
+        });
       }
     }
 
