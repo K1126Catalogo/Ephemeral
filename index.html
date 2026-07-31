@@ -297,12 +297,12 @@
       const contenedor = document.getElementById('contenedorSecciones');
       contenedor.innerHTML = '';
 
-      // Fijas primero (Hombres, Mujeres, Accesorios), luego las personalizadas que
-      // el admin haya creado (ej. "Nuevo Drop", "Más vendidos"), en el orden en que existan.
-      const todasLasSecciones = [
-        ...SECCIONES_FIJAS,
-        ...seccionesPersonalizadas.map(s => ({ clave: s.clave, titulo: s.nombre }))
-      ];
+    
+      // orden que se  haya creado (ej. "Nuevo Drop", "Más vendidos"), en el orden en que existan.
+     const todasLasSecciones = [
+  ...seccionesPersonalizadas.map(s => ({ clave: s.clave, titulo: s.nombre })),
+  ...SECCIONES_FIJAS
+];
 
       todasLasSecciones.forEach(seccion => {
         const productosSeccion = todosLosProductos.filter(p => obtenerSeccionesDeProducto(p).includes(seccion.clave));
