@@ -92,14 +92,36 @@
             </select>
             <input id="fCategoria" type="text" placeholder="Nombre de la nueva categoría" class="hidden w-full px-4 py-2 rounded-lg text-black mt-2">
           </div>
-
-          <select id="fSeccion" class="w-full px-4 py-2 rounded-lg text-black">
-            <option value="">Selecciona sección...</option>
-            <option value="hombre">Hombre</option>
-            <option value="mujer">Mujer</option>
-            <option value="accesorios">Accesorios</option>
-          </select>
           <input id="fPrecio" type="number" placeholder="Precio MXN" class="px-4 py-2 rounded-lg text-black">
+        </div>
+
+        <!-- SECCIONES: fijas (obligatorio elegir mínimo 1) + personalizadas (opcionales, editables/eliminables) -->
+        <div class="mb-4">
+          <label class="block text-sm text-gray-400 mb-2">
+            Secciones — elige al menos una de Hombre / Mujer / Accesorios (puedes marcar varias). Las de abajo son opcionales.
+          </label>
+
+          <div class="flex flex-wrap gap-2 mb-3">
+            <label class="flex items-center gap-2 bg-zinc-800 px-3 py-2 rounded-lg text-sm cursor-pointer">
+              <input type="checkbox" class="seccion-fija-check" value="hombre"> Hombre
+            </label>
+            <label class="flex items-center gap-2 bg-zinc-800 px-3 py-2 rounded-lg text-sm cursor-pointer">
+              <input type="checkbox" class="seccion-fija-check" value="mujer"> Mujer
+            </label>
+            <label class="flex items-center gap-2 bg-zinc-800 px-3 py-2 rounded-lg text-sm cursor-pointer">
+              <input type="checkbox" class="seccion-fija-check" value="accesorios"> Accesorios
+            </label>
+          </div>
+
+          <div id="contenedorSeccionesPersonalizadas" class="flex flex-wrap gap-2 mb-3"></div>
+
+          <div class="flex gap-2">
+            <input id="nuevaSeccionInput" type="text" placeholder="Nombre de sección nueva (ej: Nuevo Drop, Más vendidos)"
+                   class="flex-1 px-3 py-2 rounded-lg text-black text-sm">
+            <button type="button" onclick="crearSeccionPersonalizada()" class="bg-blue-500 hover:bg-blue-600 transition px-3 py-2 rounded-lg text-xs whitespace-nowrap">
+              + Crear sección
+            </button>
+          </div>
         </div>
 
         <div class="mb-4">
@@ -228,6 +250,7 @@
     let pedidosHistorial = [];
     let pedidosCancelados = [];
     let tabActiva = 'pendientes';
+    let seccionesPersonalizadas = []; // [{id, nombre, clave}] cargadas desde la colección "secciones"
 
     // ===== LOGIN =====
     function iniciarSesion() {
@@ -246,6 +269,7 @@
         document.getElementById('panelAdmin').classList.remove('hidden');
         cargarListaProductos();
         cargarPedidos();
+        cargarSeccionesPersonalizadas();
       } else {
         document.getElementById('loginScreen').classList.remove('hidden');
         document.getElementById('panelAdmin').classList.add('hidden');
@@ -283,6 +307,123 @@
         return document.getElementById('fCategoria').value.trim().toLowerCase();
       }
       return select.value.trim().toLowerCase();
+    }
+
+    // ===== SECCIONES (fijas + personalizadas) =====
+    // Compatibilidad con productos viejos que tenían "seccion" (string) en vez de "secciones" (array),
+    // y arregla el valor viejo "accesorio" (singular) al nuevo "accesorios" (plural, el que usa el resto del sitio).
+    function normalizarClaveSeccion(clave) {
+      return clave === 'accesorio' ? 'accesorios' : clave;
+    }
+
+    function obtenerSeccionesDeProducto(producto) {
+      const arr = Array.isArray(producto.secciones)
+        ? producto.secciones
+        : (producto.seccion ? [producto.seccion] : []);
+      return arr.map(normalizarClaveSeccion);
+    }
+
+    function slugificarSeccion(texto) {
+      return texto
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    }
+
+    function nombreBonitoSeccion(clave) {
+      const FIJAS = { hombre: 'Hombre', mujer: 'Mujer', accesorios: 'Accesorios' };
+      if (FIJAS[clave]) return FIJAS[clave];
+      const personalizada = seccionesPersonalizadas.find(s => s.clave === clave);
+      return personalizada ? personalizada.nombre : clave;
+    }
+
+    async function cargarSeccionesPersonalizadas() {
+      try {
+        const snapshot = await db.collection('secciones').get();
+        seccionesPersonalizadas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderizarSeccionesPersonalizadas();
+        if (todosLosProductosAdmin.length > 0) renderizarListaAdmin(todosLosProductosAdmin);
+      } catch (error) {
+        console.error('Error al cargar secciones:', error);
+      }
+    }
+
+    function renderizarSeccionesPersonalizadas() {
+      const contenedor = document.getElementById('contenedorSeccionesPersonalizadas');
+      contenedor.innerHTML = seccionesPersonalizadas.map(s => `
+        <div class="flex items-center gap-1 bg-zinc-800 px-3 py-2 rounded-lg text-sm" data-id="${s.id}">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" class="seccion-personalizada-check" value="${s.clave}"> ${s.nombre}
+          </label>
+          <button type="button" onclick="renombrarSeccionPersonalizada('${s.id}')" title="Renombrar" class="text-blue-400 hover:text-blue-300 text-xs ml-1">✎</button>
+          <button type="button" onclick="eliminarSeccionPersonalizada('${s.id}')" title="Eliminar" class="text-red-400 hover:text-red-300 text-xs">✕</button>
+        </div>
+      `).join('');
+    }
+
+    async function crearSeccionPersonalizada() {
+  const input = document.getElementById('nuevaSeccionInput');
+  const nombre = input.value.trim();
+  if (!nombre) return;
+
+  let clave = slugificarSeccion(nombre);
+  if (['hombre', 'mujer', 'accesorios', 'accesorio'].includes(clave) || seccionesPersonalizadas.some(s => s.clave === clave)) {
+    alert('Ya existe una sección con ese nombre (o es muy parecido a una ya existente).');
+    return;
+  }
+
+  // Guarda cuáles personalizadas estaban marcadas ANTES de recargar la lista
+  const marcadasAntes = Array.from(document.querySelectorAll('.seccion-personalizada-check:checked')).map(cb => cb.value);
+
+  try {
+    await db.collection('secciones').add({ nombre, clave });
+    input.value = '';
+    await cargarSeccionesPersonalizadas();
+
+    // Vuelve a marcar las que ya tenías, más la nueva recién creada
+    document.querySelectorAll('.seccion-personalizada-check').forEach(cb => {
+      if (marcadasAntes.includes(cb.value) || cb.value === clave) cb.checked = true;
+    });
+  } catch (error) {
+    alert('Error al crear la sección: ' + error.message);
+  }
+}
+
+    async function renombrarSeccionPersonalizada(id) {
+      const seccion = seccionesPersonalizadas.find(s => s.id === id);
+      if (!seccion) return;
+      const nuevoNombre = prompt('Nuevo nombre para esta sección:', seccion.nombre);
+      if (!nuevoNombre || !nuevoNombre.trim() || nuevoNombre.trim() === seccion.nombre) return;
+
+      try {
+        await db.collection('secciones').doc(id).update({ nombre: nuevoNombre.trim() });
+        await cargarSeccionesPersonalizadas();
+      } catch (error) {
+        alert('Error al renombrar: ' + error.message);
+      }
+    }
+
+    async function eliminarSeccionPersonalizada(id) {
+      if (!confirm('¿Eliminar esta sección? Los productos que ya la tenían marcada la conservarán guardada, pero dejará de aparecer como opción o como carrusel en la tienda.')) return;
+      try {
+        await db.collection('secciones').doc(id).delete();
+        await cargarSeccionesPersonalizadas();
+      } catch (error) {
+        alert('Error al eliminar: ' + error.message);
+      }
+    }
+
+    function obtenerSeccionesSeleccionadas() {
+      const fijas = Array.from(document.querySelectorAll('.seccion-fija-check:checked')).map(cb => cb.value);
+      const personalizadas = Array.from(document.querySelectorAll('.seccion-personalizada-check:checked')).map(cb => cb.value);
+      return { fijas, todas: [...fijas, ...personalizadas] };
+    }
+
+    function marcarSeccionesEnFormulario(claves) {
+      document.querySelectorAll('.seccion-fija-check, .seccion-personalizada-check').forEach(cb => {
+        cb.checked = claves.includes(cb.value);
+      });
     }
 
     // ===== TALLAS DINÁMICAS =====
@@ -348,18 +489,25 @@
     // ===== CRUD PRODUCTOS =====
     async function guardarProducto() {
       const id = document.getElementById('productoId').value;
+      const { fijas, todas } = obtenerSeccionesSeleccionadas();
+
       const producto = {
         nombre: document.getElementById('fNombre').value,
         categoria: obtenerCategoriaFormulario(),
-        seccion: document.getElementById('fSeccion').value,
+        secciones: todas,
         precio: Number(document.getElementById('fPrecio').value),
         tallas: obtenerTallasDelFormulario(),
         descripcion: document.getElementById('fDescripcion').value,
         imagenes: document.getElementById('fImagenes').value.split(',').map(s => s.trim()).filter(Boolean)
       };
 
-      if (!producto.nombre || !producto.categoria || !producto.precio || !producto.seccion) {
-        alert('Llena al menos nombre, categoría, sección y precio');
+      if (!producto.nombre || !producto.categoria || !producto.precio) {
+        alert('Llena al menos nombre, categoría y precio');
+        return;
+      }
+
+      if (fijas.length === 0) {
+        alert('Selecciona al menos una sección fija: Hombre, Mujer o Accesorios');
         return;
       }
 
@@ -370,6 +518,9 @@
 
       try {
         if (id) {
+          // Borra el campo viejo "seccion" (singular) si el producto lo traía de antes,
+          // ya que ahora todo vive en "secciones" (array).
+          producto.seccion = firebase.firestore.FieldValue.delete();
           await db.collection('productos').doc(id).update(producto);
         } else {
           await db.collection('productos').add(producto);
@@ -406,7 +557,7 @@
             <img src="${p.imagenes[0]}" class="w-full h-32 object-cover rounded-lg mb-2">
             <p class="font-semibold text-sm truncate">${p.nombre}</p>
             <p class="text-xs text-gray-400 mb-2">$${p.precio} MXN · Stock total: ${stockTotal}</p>
-            <p class="text-xs text-gray-500 mb-3">${p.categoria} ${p.seccion ? `· ${p.seccion}` : ''}</p>
+            <p class="text-xs text-gray-500 mb-3">${obtenerSeccionesDeProducto(p).map(nombreBonitoSeccion).join(', ')} · ${p.categoria}</p>
             <div class="flex gap-2 mt-auto">
               <button onclick='editarProducto("${p.id}", ${JSON.stringify(p)})' class="flex-1 bg-blue-500 hover:bg-blue-600 transition px-2 py-1 rounded-lg text-xs">
                 Editar
@@ -429,8 +580,8 @@
       document.getElementById('formTitulo').textContent = 'Editar producto';
       document.getElementById('productoId').value = id;
       document.getElementById('fNombre').value = producto.nombre;
+      marcarSeccionesEnFormulario(obtenerSeccionesDeProducto(producto));
       document.getElementById('fCategoriaSelect').value = producto.categoria;
-      document.getElementById('fSeccion').value = producto.seccion || '';
       document.getElementById('fCategoria').classList.add('hidden');
       document.getElementById('fCategoria').value = '';
       document.getElementById('fPrecio').value = producto.precio;
@@ -462,8 +613,8 @@
       document.getElementById('formTitulo').textContent = 'Agregar producto nuevo';
       document.getElementById('productoId').value = '';
       document.getElementById('fNombre').value = '';
+      marcarSeccionesEnFormulario([]);
       document.getElementById('fCategoriaSelect').value = '';
-      document.getElementById('fSeccion').value = '';
       document.getElementById('fCategoria').classList.add('hidden');
       document.getElementById('fCategoria').value = '';
       document.getElementById('fPrecio').value = '';

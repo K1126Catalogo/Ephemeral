@@ -164,19 +164,11 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main class="flex-1 p-6">
 
-      <!-- Filtro por sección -->
+      <!-- Filtro por sección: "Todos" fijo en el HTML, el resto (fijas + personalizadas)
+           se genera dinámicamente en generarBotonesSeccion() -->
       <div id="filtrosSeccion" class="flex gap-2 flex-wrap mb-5">
         <button onclick="filtrarSeccion('todos')" data-sec="todos" class="seccion-btn px-4 py-2 rounded-full text-sm font-medium bg-white text-black transition">
           Todos
-        </button>
-        <button onclick="filtrarSeccion('hombre')" data-sec="hombre" class="seccion-btn px-4 py-2 rounded-full text-sm font-medium bg-zinc-800 text-white transition">
-          Hombre
-        </button>
-        <button onclick="filtrarSeccion('mujer')" data-sec="mujer" class="seccion-btn px-4 py-2 rounded-full text-sm font-medium bg-zinc-800 text-white transition">
-          Mujer
-        </button>
-        <button onclick="filtrarSeccion('accesorios')" data-sec="accesorios" class="seccion-btn px-4 py-2 rounded-full text-sm font-medium bg-zinc-800 text-white transition">
-          Accesorios
         </button>
       </div>
 
@@ -242,19 +234,61 @@
     let modoFavoritos = false;
     let usuarioActual = null;
     let favoritosUsuario = [];
+    let seccionesPersonalizadas = []; // [{id, nombre, clave}] cargadas desde Firestore
+
+    const SECCIONES_FIJAS = [
+      { clave: 'hombre', nombre: 'Hombre' },
+      { clave: 'mujer', nombre: 'Mujer' },
+      { clave: 'accesorios', nombre: 'Accesorios' }
+    ];
+
+    // Compatibilidad con productos viejos (campo "seccion" string) y arreglo del valor
+    // viejo "accesorio" (singular) -> "accesorios" (plural, el que usa el resto del sitio).
+    function normalizarClaveSeccion(clave) {
+      return clave === 'accesorio' ? 'accesorios' : clave;
+    }
+
+    function obtenerSeccionesDeProducto(producto) {
+      const arr = Array.isArray(producto.secciones)
+        ? producto.secciones
+        : (producto.seccion ? [producto.seccion] : []);
+      return arr.map(normalizarClaveSeccion);
+    }
 
     // ===== CARGA INICIAL =====
     async function cargarProductos() {
       try {
-        const snapshot = await db.collection('productos').get();
-        todosLosProductos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const [snapshotProductos, snapshotSecciones] = await Promise.all([
+          db.collection('productos').get(),
+          db.collection('secciones').get()
+        ]);
+        todosLosProductos = snapshotProductos.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        seccionesPersonalizadas = snapshotSecciones.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         generarCategorias();
+        generarBotonesSeccion();
         leerParametrosURL();
         filtrarProductos();
         actualizarCarritoUI();
       } catch (error) {
         console.error('Error al cargar productos:', error);
       }
+    }
+
+    // Genera los botones de sección: fijas (Hombre/Mujer/Accesorios) + las personalizadas
+    // que el admin haya creado (ej. "Nuevo Drop"). "Todos" ya está fijo en el HTML.
+    function generarBotonesSeccion() {
+      const contenedor = document.getElementById('filtrosSeccion');
+      const todasLasSecciones = [
+        ...SECCIONES_FIJAS,
+        ...seccionesPersonalizadas.map(s => ({ clave: s.clave, nombre: s.nombre }))
+      ];
+
+      todasLasSecciones.forEach(s => {
+        contenedor.insertAdjacentHTML('beforeend', `
+          <button onclick="filtrarSeccion('${s.clave}')" data-sec="${s.clave}" class="seccion-btn px-4 py-2 rounded-full text-sm font-medium bg-zinc-800 text-white transition">
+            ${s.nombre}
+          </button>`);
+      });
     }
 
     // Lee ?categoria=, ?seccion= y ?buscar= de la URL (así index.html y producto.html
@@ -398,7 +432,9 @@
         if (modoFavoritos) {
           filtrados = filtrados.filter(p => favoritosUsuario.includes(p.id));
         } else {
-          if (seccionActiva !== 'todos') filtrados = filtrados.filter(p => p.seccion === seccionActiva);
+          if (seccionActiva !== 'todos') {
+            filtrados = filtrados.filter(p => obtenerSeccionesDeProducto(p).includes(seccionActiva));
+          }
           if (categoriaActiva !== 'todos') filtrados = filtrados.filter(p => p.categoria === categoriaActiva);
         }
       }

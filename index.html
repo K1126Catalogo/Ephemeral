@@ -173,7 +173,7 @@
 
       <!-- SECCIONES CON CARRUSEL -->
       <div id="contenedorSecciones" class="py-10 space-y-14">
-        <!-- Se generan dinámicamente: Hombres, Mujeres, Accesorios -->
+        <!-- Se generan dinámicamente: fijas (Hombres, Mujeres, Accesorios) + personalizadas -->
       </div>
 
     </main>
@@ -233,17 +233,35 @@
     let carrito = JSON.parse(sessionStorage.getItem('carrito')) || [];
     let usuarioActual = null;
     let favoritosUsuario = [];
+    let seccionesPersonalizadas = []; // [{id, nombre, clave}] cargadas desde Firestore
 
-    const SECCIONES = [
+    const SECCIONES_FIJAS = [
       { clave: 'hombre', titulo: 'Hombres' },
       { clave: 'mujer', titulo: 'Mujeres' },
       { clave: 'accesorios', titulo: 'Accesorios' }
     ];
 
+    // Compatibilidad con productos viejos (campo "seccion" string) y arreglo del valor
+    // viejo "accesorio" (singular) -> "accesorios" (plural, el que usa el resto del sitio).
+    function normalizarClaveSeccion(clave) {
+      return clave === 'accesorio' ? 'accesorios' : clave;
+    }
+
+    function obtenerSeccionesDeProducto(producto) {
+      const arr = Array.isArray(producto.secciones)
+        ? producto.secciones
+        : (producto.seccion ? [producto.seccion] : []);
+      return arr.map(normalizarClaveSeccion);
+    }
+
     async function cargarProductos() {
       try {
-        const snapshot = await db.collection('productos').get();
-        todosLosProductos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const [snapshotProductos, snapshotSecciones] = await Promise.all([
+          db.collection('productos').get(),
+          db.collection('secciones').get()
+        ]);
+        todosLosProductos = snapshotProductos.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        seccionesPersonalizadas = snapshotSecciones.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         generarCategoriasSidebar();
         renderizarSecciones();
         actualizarCarritoUI();
@@ -279,8 +297,15 @@
       const contenedor = document.getElementById('contenedorSecciones');
       contenedor.innerHTML = '';
 
-      SECCIONES.forEach(seccion => {
-        const productosSeccion = todosLosProductos.filter(p => p.seccion === seccion.clave);
+      // Fijas primero (Hombres, Mujeres, Accesorios), luego las personalizadas que
+      // el admin haya creado (ej. "Nuevo Drop", "Más vendidos"), en el orden en que existan.
+      const todasLasSecciones = [
+        ...SECCIONES_FIJAS,
+        ...seccionesPersonalizadas.map(s => ({ clave: s.clave, titulo: s.nombre }))
+      ];
+
+      todasLasSecciones.forEach(seccion => {
+        const productosSeccion = todosLosProductos.filter(p => obtenerSeccionesDeProducto(p).includes(seccion.clave));
         if (productosSeccion.length === 0) return;
 
         const idCarrusel = `carrusel-${seccion.clave}`;
@@ -290,7 +315,7 @@
           <div class="max-w-7xl mx-auto px-4 md:px-8">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-2xl md:text-3xl font-bold">${seccion.titulo}</h2>
-              <a href="listado.html?seccion=${seccion.clave}" class="text-sm text-gray-400 hover:text-white transition whitespace-nowrap">
+              <a href="listado.html?seccion=${encodeURIComponent(seccion.clave)}" class="text-sm text-gray-400 hover:text-white transition whitespace-nowrap">
                 Ver todo →
               </a>
             </div>
