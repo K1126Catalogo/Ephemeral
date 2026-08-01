@@ -68,7 +68,7 @@
                  type="text"
                  placeholder="Buscar..."
                  class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-32 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
-                 oninput="filtrarProductos()"
+                oninput="sincronizarBusqueda(this.value)"
                  onfocus="filtrarProductos()"
                  onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
           <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition" title="Buscar">
@@ -91,7 +91,7 @@
              type="text"
              placeholder="Buscar productos..."
              class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-black text-sm focus:outline-none focus:ring-2 focus:ring-black"
-             oninput="filtrarProductos()"
+            oninput="sincronizarBusqueda(this.value)"
              onfocus="filtrarProductos()"
              onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscar();}">
       <button onclick="irABuscar()" class="bg-black text-white px-3 py-2 rounded-lg text-sm" title="Buscar">🔍</button>
@@ -408,6 +408,12 @@
       return document.getElementById('inputBuscador').value ||
              document.getElementById('inputBuscadorMovil').value || '';
     }
+
+    function sincronizarBusqueda(valor) {
+  document.getElementById('inputBuscador').value = valor;
+  document.getElementById('inputBuscadorMovil').value = valor;
+  filtrarProductos();
+}
 
     // Botón 🔍: si ya estamos en listado.html, solo confirma el filtro y oculta sugerencias.
     // Esta misma función se reutilizará en index.html/producto.html para MANDAR a listado.html.
