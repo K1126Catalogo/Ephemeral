@@ -849,37 +849,81 @@
       `).join('');
     }
 
+    // ===== CONFIRMAR VENTA (con verificación de stock y de subtotal contra precios actuales) =====
     async function confirmarVenta(pedidoId) {
       const pedido = pedidosPendientes.find(p => p.id === pedidoId);
       if (!pedido) return;
 
-      // Verificar stock actual antes de confirmar, para avisar si ya no alcanza
-      const advertencias = [];
+      // Verificar stock actual Y precio actual antes de confirmar
+      const advertenciasStock = [];
+      const advertenciasPrecio = [];
       const datosProductos = {};
+      let subtotalReal = 0;
+      let huboProductoFaltante = false;
 
       for (const item of pedido.productos) {
         const productoRef = db.collection('productos').doc(item.id);
         const productoDoc = await productoRef.get();
+
         if (!productoDoc.exists) {
-          advertencias.push(`"${item.nombre}" ya no existe en el catálogo.`);
+          advertenciasStock.push(`"${item.nombre}" ya no existe en el catálogo.`);
+          huboProductoFaltante = true;
           continue;
         }
+
         const productoData = productoDoc.data();
         datosProductos[item.id] = productoData;
 
+        // --- Verificación de stock ---
         if (productoData.tallas && productoData.tallas.length > 0 && typeof productoData.tallas[0] === 'object') {
           const talla = productoData.tallas.find(t => t.nombre === item.talla);
           const stockActual = talla ? talla.stock : 0;
           if (stockActual < item.cantidad) {
-            advertencias.push(`"${item.nombre}" (${item.talla}): stock actual ${stockActual}, este pedido pide ${item.cantidad}.`);
+            advertenciasStock.push(`"${item.nombre}" (${item.talla}): stock actual ${stockActual}, este pedido pide ${item.cantidad}.`);
           }
+        }
+
+        // --- Verificación de precio/subtotal ---
+        const precioActual = typeof productoData.precio === 'number' ? productoData.precio : item.precio;
+        subtotalReal += precioActual * item.cantidad;
+
+        if (precioActual !== item.precio) {
+          const diferenciaUnitaria = precioActual - item.precio;
+          const signo = diferenciaUnitaria > 0 ? '+' : '';
+          advertenciasPrecio.push(
+            `"${item.nombre}": se cobró $${item.precio} MXN, precio actual $${precioActual} MXN (${signo}${diferenciaUnitaria} c/u).`
+          );
         }
       }
 
+      // Si algún producto ya no existe, no podemos calcular un subtotal real confiable
+      const diferenciaSubtotal = subtotalReal - pedido.subtotal;
+      const haySubtotalDistinto = !huboProductoFaltante && diferenciaSubtotal !== 0;
+
       let mensaje = '¿Confirmar esta venta? Se descontará el stock correspondiente.';
-      if (advertencias.length > 0) {
-        mensaje = '⚠️ ATENCIÓN, posible stock insuficiente:\n\n' + advertencias.join('\n') +
-          '\n\n¿Confirmar de todas formas? (el stock quedará en 0, no en negativo)';
+      const bloques = [];
+
+      if (advertenciasStock.length > 0) {
+        bloques.push('📦 Posible stock insuficiente:\n' + advertenciasStock.join('\n'));
+      }
+
+      if (advertenciasPrecio.length > 0 || haySubtotalDistinto) {
+        let bloquePrecio = '💰 El subtotal del pedido no coincide con los precios actuales:\n';
+        if (advertenciasPrecio.length > 0) {
+          bloquePrecio += advertenciasPrecio.join('\n') + '\n';
+        }
+        if (!huboProductoFaltante) {
+          const signoTotal = diferenciaSubtotal > 0 ? '+' : '';
+          bloquePrecio += `Subtotal cobrado: $${pedido.subtotal} MXN · Subtotal con precios actuales: $${subtotalReal} MXN (${signoTotal}${diferenciaSubtotal} MXN)`;
+        } else {
+          bloquePrecio += 'No se pudo calcular el subtotal real porque al menos un producto ya no existe.';
+        }
+        bloques.push(bloquePrecio);
+      }
+
+      if (bloques.length > 0) {
+        mensaje = '⚠️ ATENCIÓN antes de confirmar:\n\n' + bloques.join('\n\n') +
+          '\n\n¿Confirmar de todas formas?';
       }
 
       if (!confirm(mensaje)) return;
