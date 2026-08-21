@@ -425,19 +425,40 @@
 
       let datosDireccion;
 
-      if (direccionSeleccionadaId) {
-        datosDireccion = direccionesGuardadas.find(d => d.id === direccionSeleccionadaId);
-      } else {
-        datosDireccion = {
-          nombre: document.getElementById('dNombre').value.trim(),
-          telefono: document.getElementById('dTelefono').value.trim(),
-          calle: document.getElementById('dCalle').value.trim(),
-          colonia: document.getElementById('dColonia').value.trim(),
-          ciudad: document.getElementById('dCiudad').value.trim(),
-          estado: document.getElementById('dEstado').value.trim(),
-          cp: document.getElementById('dCP').value.trim(),
-          referencias: document.getElementById('dReferencias').value.trim()
-        };
+     
+    if (direccionSeleccionadaId) {
+  const direccionGuardada = direccionesGuardadas.find(
+    d => d.id === direccionSeleccionadaId
+  );
+
+  if (!direccionGuardada) {
+    errorEl.textContent = 'No se encontró la dirección seleccionada.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  datosDireccion = {
+    nombre: direccionGuardada.nombre || '',
+    telefono: direccionGuardada.telefono || '',
+    calle: direccionGuardada.calle || '',
+    colonia: direccionGuardada.colonia || '',
+    ciudad: direccionGuardada.ciudad || '',
+    estado: direccionGuardada.estado || '',
+    cp: direccionGuardada.cp || '',
+    referencias: direccionGuardada.referencias || ''
+  };
+} else {
+  datosDireccion = {
+    nombre: document.getElementById('dNombre').value.trim(),
+    telefono: document.getElementById('dTelefono').value.trim(),
+    calle: document.getElementById('dCalle').value.trim(),
+    colonia: document.getElementById('dColonia').value.trim(),
+    ciudad: document.getElementById('dCiudad').value.trim(),
+    estado: document.getElementById('dEstado').value.trim(),
+    cp: document.getElementById('dCP').value.trim(),
+    referencias: document.getElementById('dReferencias').value.trim()
+  };
+}
 
         if (!datosDireccion.nombre || !datosDireccion.telefono || !datosDireccion.calle ||
             !datosDireccion.colonia || !datosDireccion.ciudad || !datosDireccion.estado || !datosDireccion.cp) {
