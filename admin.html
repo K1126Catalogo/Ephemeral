@@ -250,7 +250,98 @@
     let pedidosHistorial = [];
     let pedidosCancelados = [];
     let tabActiva = 'pendientes';
+
     let seccionesPersonalizadas = []; // [{id, nombre, clave}] cargadas desde la colección "secciones"
+
+    // ===== SEGURIDAD XSS =====
+    // Todo dato que venga de Firestore o de formularios y vaya a insertarse mediante
+    // innerHTML debe pasar por escaparHTML(). Así el navegador lo muestra como texto
+    // y no lo interpreta como HTML/JavaScript.
+    function escaparHTML(valor) {
+      return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Solo permitimos imágenes http/https. Si una URL almacenada no es válida,
+    // usamos el logo local como respaldo.
+    function urlImagenSegura(valor) {
+      try {
+        const url = new URL(String(valor ?? ''), window.location.href);
+        if (url.protocol === 'https:' || url.protocol === 'http:') {
+          return url.href;
+        }
+      } catch (error) {
+        // URL inválida: se usa el respaldo.
+      }
+      return 'images/Logo.png';
+    }
+
+    function obtenerPedidoPorId(id) {
+      return [
+        ...pedidosPendientes,
+        ...pedidosHistorial,
+        ...pedidosCancelados
+      ].find(p => p.id === id);
+    }
+
+    function obtenerProductoAdminPorId(id) {
+      return todosLosProductosAdmin.find(p => p.id === id);
+    }
+
+    function vincularAccionesPedidos(contenedor) {
+      contenedor.querySelectorAll('[data-accion][data-pedido-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pedidoId = btn.dataset.pedidoId;
+          const accion = btn.dataset.accion;
+
+          if (accion === 'ver') {
+            const pedido = obtenerPedidoPorId(pedidoId);
+            if (pedido) verDetallePedido(pedido);
+          } else if (accion === 'confirmar') {
+            confirmarVenta(pedidoId);
+          } else if (accion === 'cancelar') {
+            cancelarPedido(pedidoId);
+          } else if (accion === 'deshacer') {
+            deshacerConfirmacion(pedidoId);
+          }
+        });
+      });
+    }
+
+    function vincularAccionesProductos(contenedor) {
+      contenedor.querySelectorAll('[data-accion][data-producto-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const productoId = btn.dataset.productoId;
+          const accion = btn.dataset.accion;
+
+          if (accion === 'editar') {
+            const producto = obtenerProductoAdminPorId(productoId);
+            if (producto) editarProducto(productoId, producto);
+          } else if (accion === 'eliminar') {
+            eliminarProducto(productoId);
+          }
+        });
+      });
+    }
+
+    function vincularAccionesSecciones(contenedor) {
+      contenedor.querySelectorAll('[data-accion][data-seccion-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const seccionId = btn.dataset.seccionId;
+          const accion = btn.dataset.accion;
+
+          if (accion === 'renombrar') {
+            renombrarSeccionPersonalizada(seccionId);
+          } else if (accion === 'eliminar') {
+            eliminarSeccionPersonalizada(seccionId);
+          }
+        });
+      });
+    }
 
     // ===== LOGIN =====
     function iniciarSesion() {
@@ -283,7 +374,11 @@
       const valorActual = select.value;
 
       select.innerHTML = '<option value="">Selecciona una categoría...</option>' +
-        categorias.map(c => `<option value="${c}">${c.charAt(0).toUpperCase() + c.slice(1)}</option>`).join('') +
+        categorias.map(c => `
+          <option value="${escaparHTML(c)}">
+            ${escaparHTML(c.charAt(0).toUpperCase() + c.slice(1))}
+          </option>
+        `).join('') +
         '<option value="__nueva__">+ Nueva categoría</option>';
 
       if (categorias.includes(valorActual)) select.value = valorActual;
@@ -352,15 +447,36 @@
 
     function renderizarSeccionesPersonalizadas() {
       const contenedor = document.getElementById('contenedorSeccionesPersonalizadas');
+
       contenedor.innerHTML = seccionesPersonalizadas.map(s => `
-        <div class="flex items-center gap-1 bg-zinc-800 px-3 py-2 rounded-lg text-sm" data-id="${s.id}">
+        <div class="flex items-center gap-1 bg-zinc-800 px-3 py-2 rounded-lg text-sm"
+             data-id="${escaparHTML(s.id)}">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" class="seccion-personalizada-check" value="${s.clave}"> ${s.nombre}
+            <input type="checkbox"
+                   class="seccion-personalizada-check"
+                   value="${escaparHTML(s.clave)}">
+            ${escaparHTML(s.nombre)}
           </label>
-          <button type="button" onclick="renombrarSeccionPersonalizada('${s.id}')" title="Renombrar" class="text-blue-400 hover:text-blue-300 text-xs ml-1">✎</button>
-          <button type="button" onclick="eliminarSeccionPersonalizada('${s.id}')" title="Eliminar" class="text-red-400 hover:text-red-300 text-xs">✕</button>
+
+          <button type="button"
+                  data-accion="renombrar"
+                  data-seccion-id="${escaparHTML(s.id)}"
+                  title="Renombrar"
+                  class="text-blue-400 hover:text-blue-300 text-xs ml-1">
+            ✎
+          </button>
+
+          <button type="button"
+                  data-accion="eliminar"
+                  data-seccion-id="${escaparHTML(s.id)}"
+                  title="Eliminar"
+                  class="text-red-400 hover:text-red-300 text-xs">
+            ✕
+          </button>
         </div>
       `).join('');
+
+      vincularAccionesSecciones(contenedor);
     }
 
     async function crearSeccionPersonalizada() {
@@ -432,11 +548,26 @@
       const contenedor = document.getElementById('contenedorTallas');
       const fila = document.createElement('div');
       fila.className = 'flex gap-2 items-center talla-fila';
+
+      const nombreSeguro = escaparHTML(nombre);
+      const stockSeguro = escaparHTML(stock);
+
       fila.innerHTML = `
-        <input type="text" placeholder="Nombre talla (ej: Chica)" value="${nombre}" class="talla-nombre flex-1 px-3 py-2 rounded-lg text-black text-sm">
-        <input type="number" placeholder="Stock" value="${stock}" class="talla-stock w-24 px-3 py-2 rounded-lg text-black text-sm">
-        <button type="button" onclick="this.parentElement.remove()" class="text-red-500 text-sm px-2">✕</button>
+        <input type="text"
+               placeholder="Nombre talla (ej: Chica)"
+               value="${nombreSeguro}"
+               class="talla-nombre flex-1 px-3 py-2 rounded-lg text-black text-sm">
+        <input type="number"
+               placeholder="Stock"
+               value="${stockSeguro}"
+               class="talla-stock w-24 px-3 py-2 rounded-lg text-black text-sm">
+        <button type="button"
+                onclick="this.parentElement.remove()"
+                class="text-red-500 text-sm px-2">
+          ✕
+        </button>
       `;
+
       contenedor.appendChild(fila);
     }
 
@@ -475,7 +606,11 @@
           if (data.success) {
             const url = data.data.url;
             urlsImagenesSubidas.push(url);
-            preview.innerHTML += `<img src="${url}" class="w-16 h-16 object-cover rounded-lg border-2 border-green-500">`;
+            const urlSegura = urlImagenSegura(url);
+            preview.insertAdjacentHTML(
+              'beforeend',
+              `<img src="${escaparHTML(urlSegura)}" class="w-16 h-16 object-cover rounded-lg border-2 border-green-500">`
+            );
           }
         } catch (error) {
           estado.textContent = 'Error al subir alguna imagen';
@@ -553,22 +688,47 @@
 
       productos.forEach(p => {
         const stockTotal = calcularStockTotal(p);
-        contenedor.innerHTML += `
+        const imagen = urlImagenSegura(p.imagenes?.[0]);
+        const secciones = obtenerSeccionesDeProducto(p)
+          .map(nombreBonitoSeccion)
+          .join(', ');
+
+        contenedor.insertAdjacentHTML('beforeend', `
           <div class="bg-zinc-900 rounded-xl p-3 flex flex-col">
-            <img src="${p.imagenes[0]}" class="w-full h-32 object-cover rounded-lg mb-2">
-            <p class="font-semibold text-sm truncate">${p.nombre}</p>
-            <p class="text-xs text-gray-400 mb-2">$${p.precio} MXN · Stock total: ${stockTotal}</p>
-            <p class="text-xs text-gray-500 mb-3">${obtenerSeccionesDeProducto(p).map(nombreBonitoSeccion).join(', ')} · ${p.categoria}</p>
+            <img src="${escaparHTML(imagen)}"
+                 alt="${escaparHTML(p.nombre || 'Producto')}"
+                 class="w-full h-32 object-cover rounded-lg mb-2">
+
+            <p class="font-semibold text-sm truncate">
+              ${escaparHTML(p.nombre)}
+            </p>
+
+            <p class="text-xs text-gray-400 mb-2">
+              $${escaparHTML(p.precio)} MXN · Stock total: ${escaparHTML(stockTotal)}
+            </p>
+
+            <p class="text-xs text-gray-500 mb-3">
+              ${escaparHTML(secciones)} · ${escaparHTML(p.categoria)}
+            </p>
+
             <div class="flex gap-2 mt-auto">
-              <button onclick='editarProducto("${p.id}", ${JSON.stringify(p)})' class="flex-1 bg-blue-500 hover:bg-blue-600 transition px-2 py-1 rounded-lg text-xs">
+              <button data-accion="editar"
+                      data-producto-id="${escaparHTML(p.id)}"
+                      class="flex-1 bg-blue-500 hover:bg-blue-600 transition px-2 py-1 rounded-lg text-xs">
                 Editar
               </button>
-              <button onclick="eliminarProducto('${p.id}')" class="flex-1 bg-red-500 hover:bg-red-600 transition px-2 py-1 rounded-lg text-xs">
+
+              <button data-accion="eliminar"
+                      data-producto-id="${escaparHTML(p.id)}"
+                      class="flex-1 bg-red-500 hover:bg-red-600 transition px-2 py-1 rounded-lg text-xs">
                 Eliminar
               </button>
             </div>
-          </div>`;
+          </div>
+        `);
       });
+
+      vincularAccionesProductos(contenedor);
     }
 
     function filtrarProductosAdmin() {
@@ -597,9 +757,10 @@
       }
 
       urlsImagenesSubidas = producto.imagenes;
-      document.getElementById('previewImagenes').innerHTML = producto.imagenes.map(url =>
-        `<img src="${url}" class="w-16 h-16 object-cover rounded-lg border-2 border-green-500">`
-      ).join('');
+      document.getElementById('previewImagenes').innerHTML = (producto.imagenes || []).map(url => {
+        const segura = urlImagenSegura(url);
+        return `<img src="${escaparHTML(segura)}" class="w-16 h-16 object-cover rounded-lg border-2 border-green-500">`;
+      }).join('');
 
       window.scrollTo(0, 0);
     }
@@ -791,30 +952,66 @@
       }
       sinPedidosMsg.classList.add('hidden');
 
-      contenedor.innerHTML = lista.map(p => `
-        <div class="bg-zinc-800 rounded-xl p-4">
-          <div class="flex justify-between items-start mb-2">
-            <p class="font-semibold text-sm">Pedido #${p.numeroPedido}</p>
-            <p class="text-xs text-gray-400">${formatearFecha(p.fechaCreacion)}</p>
+      contenedor.innerHTML = lista.map(p => {
+        const productosHTML = Array.isArray(p.productos)
+          ? p.productos.map(prod => `
+              <p>
+                • ${escaparHTML(prod?.nombre)}
+                (${escaparHTML(prod?.talla)})
+                x${escaparHTML(prod?.cantidad)}
+              </p>
+            `).join('')
+          : '<p>Información de productos inválida</p>';
+
+        return `
+          <div class="bg-zinc-800 rounded-xl p-4">
+            <div class="flex justify-between items-start mb-2">
+              <p class="font-semibold text-sm">
+                Pedido #${escaparHTML(p.numeroPedido)}
+              </p>
+              <p class="text-xs text-gray-400">
+                ${escaparHTML(formatearFecha(p.fechaCreacion))}
+              </p>
+            </div>
+
+            <p class="text-xs text-gray-400 mb-2">
+              ${escaparHTML(p.direccion?.nombre || 'Sin nombre')}
+              ·
+              ${escaparHTML(p.direccion?.telefono || '')}
+            </p>
+
+            <div class="text-xs text-gray-300 mb-2 space-y-1">
+              ${productosHTML}
+            </div>
+
+            <p class="text-sm font-semibold mb-3">
+              Subtotal: $${escaparHTML(p.subtotal)} MXN
+            </p>
+
+            <div class="flex gap-2">
+              <button data-accion="ver"
+                      data-pedido-id="${escaparHTML(p.id)}"
+                      class="bg-blue-500 hover:bg-blue-600 transition text-white py-2 px-3 rounded-lg text-xs">
+                Ver
+              </button>
+
+              <button data-accion="confirmar"
+                      data-pedido-id="${escaparHTML(p.id)}"
+                      class="flex-1 bg-green-500 hover:bg-green-600 transition text-white py-2 rounded-lg text-sm font-semibold">
+                Confirmar venta
+              </button>
+
+              <button data-accion="cancelar"
+                      data-pedido-id="${escaparHTML(p.id)}"
+                      class="flex-1 bg-red-500 hover:bg-red-600 transition text-white py-2 rounded-lg text-sm font-semibold">
+                Cancelar
+              </button>
+            </div>
           </div>
-          <p class="text-xs text-gray-400 mb-2">${p.direccion?.nombre || 'Sin nombre'} · ${p.direccion?.telefono || ''}</p>
-          <div class="text-xs text-gray-300 mb-2 space-y-1">
-            ${p.productos.map(prod => `<p>• ${prod.nombre} (${prod.talla}) x${prod.cantidad}</p>`).join('')}
-          </div>
-          <p class="text-sm font-semibold mb-3">Subtotal: $${p.subtotal} MXN</p>
-          <div class="flex gap-2">
-            <button onclick='verDetallePedido(${JSON.stringify(p)})' class="bg-blue-500 hover:bg-blue-600 transition text-white py-2 px-3 rounded-lg text-xs">
-              Ver
-            </button>
-            <button onclick="confirmarVenta('${p.id}')" class="flex-1 bg-green-500 hover:bg-green-600 transition text-white py-2 rounded-lg text-sm font-semibold">
-              Confirmar venta
-            </button>
-            <button onclick="cancelarPedido('${p.id}')" class="flex-1 bg-red-500 hover:bg-red-600 transition text-white py-2 rounded-lg text-sm font-semibold">
-              Cancelar
-            </button>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+
+      vincularAccionesPedidos(contenedor);
     }
 
     function renderizarHistorial(lista = pedidosHistorial) {
@@ -831,22 +1028,41 @@
       contenedor.innerHTML = lista.map(p => `
         <div class="bg-zinc-800 rounded-xl p-4">
           <div class="flex justify-between items-start mb-2">
-            <p class="font-semibold text-sm">Pedido #${p.numeroPedido}</p>
+            <p class="font-semibold text-sm">
+              Pedido #${escaparHTML(p.numeroPedido)}
+            </p>
             <p class="text-xs text-green-400">✓ Confirmado</p>
           </div>
-          <p class="text-xs text-gray-400 mb-1">${p.direccion?.nombre || 'Sin nombre'}</p>
-          <p class="text-xs text-gray-500 mb-2">Vendido: ${formatearFecha(p.fechaConfirmacion)}</p>
-          <p class="text-sm font-semibold mb-3">$${p.subtotal} MXN</p>
+
+          <p class="text-xs text-gray-400 mb-1">
+            ${escaparHTML(p.direccion?.nombre || 'Sin nombre')}
+          </p>
+
+          <p class="text-xs text-gray-500 mb-2">
+            Vendido: ${escaparHTML(formatearFecha(p.fechaConfirmacion))}
+          </p>
+
+          <p class="text-sm font-semibold mb-3">
+            $${escaparHTML(p.subtotal)} MXN
+          </p>
+
           <div class="flex gap-2">
-            <button onclick='verDetallePedido(${JSON.stringify(p)})' class="flex-1 bg-blue-500 hover:bg-blue-600 transition text-white py-2 rounded-lg text-xs">
+            <button data-accion="ver"
+                    data-pedido-id="${escaparHTML(p.id)}"
+                    class="flex-1 bg-blue-500 hover:bg-blue-600 transition text-white py-2 rounded-lg text-xs">
               Ver detalles
             </button>
-            <button onclick="deshacerConfirmacion('${p.id}')" class="flex-1 bg-zinc-700 hover:bg-zinc-600 transition text-white py-2 rounded-lg text-xs">
+
+            <button data-accion="deshacer"
+                    data-pedido-id="${escaparHTML(p.id)}"
+                    class="flex-1 bg-zinc-700 hover:bg-zinc-600 transition text-white py-2 rounded-lg text-xs">
               Deshacer
             </button>
           </div>
         </div>
       `).join('');
+
+      vincularAccionesPedidos(contenedor);
     }
 
     // ===== CONFIRMAR VENTA (con verificación de stock y de subtotal contra precios actuales) =====
@@ -1009,17 +1225,33 @@
       contenedor.innerHTML = lista.map(p => `
         <div class="bg-zinc-800 rounded-xl p-4 opacity-70">
           <div class="flex justify-between items-start mb-2">
-            <p class="font-semibold text-sm">Pedido #${p.numeroPedido}</p>
+            <p class="font-semibold text-sm">
+              Pedido #${escaparHTML(p.numeroPedido)}
+            </p>
             <p class="text-xs text-red-400">✕ Cancelado</p>
           </div>
-          <p class="text-xs text-gray-400 mb-1">${p.direccion?.nombre || 'Sin nombre'}</p>
-          <p class="text-xs text-gray-500 mb-2">Creado: ${formatearFecha(p.fechaCreacion)}</p>
-          <p class="text-sm font-semibold mb-2">$${p.subtotal} MXN</p>
-          <button onclick='verDetallePedido(${JSON.stringify(p)})' class="w-full bg-blue-500 hover:bg-blue-600 transition text-white py-2 rounded-lg text-xs">
+
+          <p class="text-xs text-gray-400 mb-1">
+            ${escaparHTML(p.direccion?.nombre || 'Sin nombre')}
+          </p>
+
+          <p class="text-xs text-gray-500 mb-2">
+            Creado: ${escaparHTML(formatearFecha(p.fechaCreacion))}
+          </p>
+
+          <p class="text-sm font-semibold mb-2">
+            $${escaparHTML(p.subtotal)} MXN
+          </p>
+
+          <button data-accion="ver"
+                  data-pedido-id="${escaparHTML(p.id)}"
+                  class="w-full bg-blue-500 hover:bg-blue-600 transition text-white py-2 rounded-lg text-xs">
             Ver detalles
           </button>
         </div>
       `).join('');
+
+      vincularAccionesPedidos(contenedor);
     }
 
     async function cancelarPedido(pedidoId) {
@@ -1044,34 +1276,69 @@
       const d = p.direccion || {};
       const contenido = document.getElementById('contenidoDetallePedido');
 
+      const productosHTML = Array.isArray(p.productos)
+        ? p.productos.map(prod => {
+            const precio = Number(prod?.precio) || 0;
+            const cantidad = Number(prod?.cantidad) || 0;
+
+            return `
+              <p class="text-sm">
+                • ${escaparHTML(prod?.nombre)}
+                (${escaparHTML(prod?.talla)})
+                x${escaparHTML(prod?.cantidad)}
+                — $${escaparHTML(precio * cantidad)} MXN
+              </p>
+            `;
+          }).join('')
+        : '<p class="text-sm text-red-400">Información de productos inválida</p>';
+
       contenido.innerHTML = `
         <div class="mb-4">
           <p class="text-sm text-gray-400">Número de pedido</p>
-          <p class="text-lg font-bold">#${p.numeroPedido}</p>
+          <p class="text-lg font-bold">#${escaparHTML(p.numeroPedido)}</p>
         </div>
 
         <div class="mb-4">
           <p class="text-sm text-gray-400 mb-1">Productos</p>
-          ${p.productos.map(prod => `
-            <p class="text-sm">• ${prod.nombre} (${prod.talla}) x${prod.cantidad} — $${prod.precio * prod.cantidad} MXN</p>
-          `).join('')}
-          <p class="text-sm font-semibold mt-2">Subtotal: $${p.subtotal} MXN</p>
+          ${productosHTML}
+          <p class="text-sm font-semibold mt-2">
+            Subtotal: $${escaparHTML(p.subtotal)} MXN
+          </p>
         </div>
 
         <div class="mb-4 bg-zinc-800 rounded-lg p-3">
           <p class="text-sm text-gray-400 mb-1">Dirección de envío</p>
-          <p class="text-sm font-medium">${d.nombre || '—'}</p>
-          <p class="text-sm text-gray-300">${d.telefono || '—'}</p>
-          <p class="text-sm text-gray-300">${d.calle || ''}, ${d.colonia || ''}</p>
-          <p class="text-sm text-gray-300">${d.ciudad || ''}, ${d.estado || ''}, CP ${d.cp || ''}</p>
-          ${d.referencias ? `<p class="text-xs text-gray-500 mt-1">Ref: ${d.referencias}</p>` : ''}
+          <p class="text-sm font-medium">${escaparHTML(d.nombre || '—')}</p>
+          <p class="text-sm text-gray-300">${escaparHTML(d.telefono || '—')}</p>
+          <p class="text-sm text-gray-300">
+            ${escaparHTML(d.calle || '')}, ${escaparHTML(d.colonia || '')}
+          </p>
+          <p class="text-sm text-gray-300">
+            ${escaparHTML(d.ciudad || '')}, ${escaparHTML(d.estado || '')},
+            CP ${escaparHTML(d.cp || '')}
+          </p>
+          ${d.referencias
+            ? `<p class="text-xs text-gray-500 mt-1">Ref: ${escaparHTML(d.referencias)}</p>`
+            : ''}
         </div>
 
         <div class="text-xs text-gray-500 space-y-1">
-          <p>Correo cliente: ${p.usuarioEmail || 'Invitado (sin sesión)'}</p>
-          <p>Creado: ${formatearFecha(p.fechaCreacion)}</p>
-          ${p.fechaConfirmacion ? `<p>Confirmado: ${formatearFecha(p.fechaConfirmacion)}</p>` : ''}
-          ${p.fechaCancelacion ? `<p>Cancelado: ${formatearFecha(p.fechaCancelacion)}</p>` : ''}
+          <p>
+            Correo cliente:
+            ${escaparHTML(p.usuarioEmail || 'Invitado (sin sesión)')}
+          </p>
+
+          <p>
+            Creado: ${escaparHTML(formatearFecha(p.fechaCreacion))}
+          </p>
+
+          ${p.fechaConfirmacion
+            ? `<p>Confirmado: ${escaparHTML(formatearFecha(p.fechaConfirmacion))}</p>`
+            : ''}
+
+          ${p.fechaCancelacion
+            ? `<p>Cancelado: ${escaparHTML(formatearFecha(p.fechaCancelacion))}</p>`
+            : ''}
         </div>
       `;
 
@@ -1090,12 +1357,21 @@
       const d = p.direccion || {};
 
       document.getElementById('reciboNumero').textContent = `#${p.numeroPedido}`;
-      document.getElementById('reciboProductos').innerHTML = p.productos.map(prod => `
-        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-          <span>${prod.nombre} (${prod.talla}) x${prod.cantidad}</span>
-          <span>$${prod.precio * prod.cantidad}</span>
-        </div>
-      `).join('');
+      document.getElementById('reciboProductos').innerHTML = (Array.isArray(p.productos) ? p.productos : []).map(prod => {
+        const precio = Number(prod?.precio) || 0;
+        const cantidad = Number(prod?.cantidad) || 0;
+
+        return `
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span>
+              ${escaparHTML(prod?.nombre)}
+              (${escaparHTML(prod?.talla)})
+              x${escaparHTML(prod?.cantidad)}
+            </span>
+            <span>$${escaparHTML(precio * cantidad)}</span>
+          </div>
+        `;
+      }).join('');
       document.getElementById('reciboTotal').textContent = `$${p.subtotal} MXN`;
       document.getElementById('reciboNombre').textContent = d.nombre || '';
       document.getElementById('reciboDireccion').textContent =
