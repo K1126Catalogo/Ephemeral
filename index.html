@@ -29,6 +29,21 @@
     .sidebar-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
     .carrusel-scroll::-webkit-scrollbar { display: none; }
     .carrusel-scroll { scrollbar-width: none; scroll-behavior: smooth; }
+
+    @keyframes resaltarCatalogo {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.035); }
+    }
+
+    .btn-catalogo-hero {
+      animation: resaltarCatalogo 2.4s ease-in-out infinite;
+      transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+    }
+
+    .btn-catalogo-hero:hover {
+      animation-play-state: paused;
+      transform: scale(1.05);
+    }
   </style>
 
   <!-- Firebase SDK -->
@@ -53,224 +68,110 @@
 
 <body class="bg-black text-white min-h-screen flex flex-col">
 
-  <!-- BARRA SUPERIOR -->
-  <div class="bg-black text-white text-center text-[10px] sm:text-xs tracking-[0.18em] uppercase py-2 border-b border-zinc-800">
-    EPHEMERAL · Calidad · Estilo · Exclusividad
-  </div>
+  <!-- HEADER -->
+  <header class="bg-white shadow-md py-4 border-b border-zinc-800 fixed top-0 left-0 right-0 z-40 md:pl-16">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 gap-4">
 
-  <!-- HEADER PRINCIPAL: estilo navegación horizontal -->
-  <header class="bg-white text-black border-b border-gray-200 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 h-[72px] flex items-center">
+      <button id="btnMenuMovil" class="md:hidden text-black text-2xl">☰</button>
 
-      <!-- IZQUIERDA: menú móvil / navegación desktop -->
-      <div class="flex-1 flex items-center justify-start">
-        <button id="btnMenuMovil"
-                class="lg:hidden text-black text-2xl w-10 h-10 flex items-center justify-center"
-                aria-label="Abrir menú">
-          ☰
-        </button>
-
-        <nav class="hidden lg:flex items-center gap-6 text-[13px] font-semibold tracking-wide">
-          <a href="listado.html?seccion=hombre" class="hover:text-gray-500 transition">HOMBRES</a>
-          <a href="listado.html?seccion=mujer" class="hover:text-gray-500 transition">MUJERES</a>
-          <a href="listado.html?seccion=accesorios" class="hover:text-gray-500 transition">ACCESORIOS</a>
-
-          <!-- Categorías dinámicas -->
-          <div class="relative group py-6">
-            <a href="listado.html"
-               class="flex items-center gap-1 hover:text-gray-500 transition">
-              CATEGORÍAS
-              <span class="text-[10px]">▼</span>
-            </a>
-
-            <div class="hidden group-hover:block absolute top-full left-0 w-56 bg-white border border-gray-200 shadow-xl rounded-b-xl overflow-hidden">
-              <ul id="listaCategorias" class="py-2">
-                <li>
-                  <a href="listado.html"
-                     data-cat="todos"
-                     class="categoria-btn block px-4 py-2.5 hover:bg-gray-100 transition text-sm font-medium">
-                    Todos
-                  </a>
-                </li>
-                <li id="liFavoritosDesktop" style="display: none;">
-                  <button onclick="irAFavoritos()"
-                          class="w-full text-left px-4 py-2.5 hover:bg-gray-100 transition text-sm font-medium">
-                    ♡ Favoritos
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </nav>
+      <div class="flex-1 flex justify-center">
+        <img src="images/LogoCompleto.png" alt="Logo EPHEMERAL" class="h-12 object-contain">
       </div>
 
-      <!-- CENTRO: logo -->
-      <div class="flex-shrink-0 px-3">
-        <a href="index.html" aria-label="Inicio EPHEMERAL">
-          <img src="images/LogoCompleto.png"
-               alt="Logo EPHEMERAL"
-               class="h-10 md:h-11 object-contain">
-        </a>
-      </div>
-
-      <!-- DERECHA: buscador, cuenta, admin y carrito -->
-      <div class="flex-1 flex items-center justify-end gap-2 sm:gap-3">
-
-        <div class="relative hidden md:flex items-center">
-          <input id="inputBuscadorIndex"
-                 type="text"
-                 placeholder="Buscar productos"
-                 class="border-b border-gray-400 bg-transparent px-2 py-2 text-black text-sm w-36 xl:w-52 focus:outline-none focus:border-black transition"
+      <div class="flex items-center gap-4">
+        <div class="relative flex items-center">
+          <input id="inputBuscadorIndex" type="text" placeholder="Buscar..."
+                 class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-24 sm:w-40 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
                  oninput="filtrarSugerenciasIndex()"
                  onfocus="filtrarSugerenciasIndex()"
                  onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscarIndex();}">
-          <button onclick="irABuscarIndex()"
-                  class="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition"
-                  title="Buscar"
-                  aria-label="Buscar">
+          <button onclick="irABuscarIndex()" class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition" title="Buscar">
             🔍
           </button>
-          <div id="sugerenciasBuscadorIndex"
-               class="hidden absolute top-full mt-2 right-0 w-72 bg-white rounded-xl border border-gray-100 shadow-xl max-h-80 overflow-y-auto z-[60]"></div>
+          <div id="sugerenciasBuscadorIndex" class="hidden absolute top-full mt-1 right-0 w-72 bg-white rounded-lg shadow-xl max-h-80 overflow-y-auto z-50"></div>
         </div>
-
-        <a href="admin.html"
-           id="linkAdmin"
-           class="hidden w-9 h-9 items-center justify-center hover:bg-gray-100 rounded-full transition text-lg"
-           title="Panel Admin">
-          ⚙️
-        </a>
-
-        <!-- Cuenta desktop/tablet -->
-        <button id="btnLogin"
-                onclick="iniciarSesionGoogle()"
-                class="hidden sm:flex w-9 h-9 items-center justify-center hover:bg-gray-100 rounded-full transition text-lg"
-                title="Iniciar sesión">
-          ♙
-        </button>
-
-        <div id="usuarioInfo"
-             class="hidden items-center cursor-pointer"
-             onclick="window.location.href='cuenta.html'"
-             title="Mi cuenta">
-          <img id="fotoUsuario"
-               class="w-8 h-8 rounded-full object-cover border border-gray-200"
-               src=""
-               alt="Usuario">
-          <p id="nombreUsuario" class="hidden"></p>
-        </div>
-
-        <button onclick="toggleCarrito()"
-                class="relative w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition text-xl"
-                aria-label="Abrir carrito">
+        <a href="admin.html" id="linkAdmin" class="hidden text-black text-xl" title="Panel Admin">⚙️</a>
+        <button onclick="toggleCarrito()" class="relative text-black text-2xl">
           🛒
-          <span id="contadorCarrito"
-                class="absolute -top-1 -right-1 bg-black text-white text-[10px] rounded-full min-w-4 h-4 px-1 flex items-center justify-center">
-            0
-          </span>
+          <span id="contadorCarrito" class="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
         </button>
       </div>
 
-    </div>
-
-    <!-- BUSCADOR MÓVIL -->
-    <div class="md:hidden px-4 pb-3">
-      <div class="relative flex items-center border border-gray-300 rounded-full bg-gray-50">
-        <input id="inputBuscadorIndexMovil"
-               type="text"
-               placeholder="Buscar productos..."
-               class="flex-1 min-w-0 bg-transparent px-4 py-2.5 text-black text-sm focus:outline-none"
-               oninput="sincronizarBuscadorIndexMovil(this.value)"
-               onfocus="sincronizarBuscadorIndexMovil(this.value)"
-               onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscarIndexMovil();}">
-        <button onclick="irABuscarIndexMovil()"
-                class="px-4 text-black"
-                aria-label="Buscar">
-          🔍
-        </button>
-        <div id="sugerenciasBuscadorIndexMovil"
-             class="hidden absolute top-full mt-2 left-0 right-0 bg-white rounded-xl shadow-xl max-h-72 overflow-y-auto z-[60]"></div>
-      </div>
     </div>
   </header>
 
-  <!-- Sidebar móvil (overlay) -->
-  <div id="sidebarMovil"
-       class="hidden fixed inset-0 bg-black/70 z-[70] lg:hidden"
-       onclick="toggleMenuMovil()">
-    <aside class="w-[82%] max-w-sm bg-white text-black h-full p-5 overflow-y-auto flex flex-col shadow-2xl"
-           onclick="event.stopPropagation()">
+  <div class="flex flex-1 md:pl-16 pt-20">
 
-      <div class="flex justify-between items-center mb-7">
-        <img src="images/LogoCompleto.png" alt="EPHEMERAL" class="h-9 object-contain">
-        <button onclick="toggleMenuMovil()"
-                class="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 rounded-full">
-          ✕
-        </button>
+    <!-- SIDEBAR CATEGORÍAS (hover en desktop) -->
+    <aside id="sidebar" class="hidden md:flex group fixed top-0 left-0 h-screen w-16 hover:w-56 bg-white border-r border-gray-200 p-4 sidebar-scroll overflow-y-auto overflow-x-hidden transition-all duration-300 flex-col z-50">
+      <div class="flex md:group-hover:hidden justify-center items-center h-12 mb-4">
+        <span class="text-2xl text-black">☰</span>
       </div>
-
-      <nav class="space-y-1 mb-6">
-        <a href="listado.html?seccion=hombre"
-           class="block px-3 py-3 rounded-lg hover:bg-gray-100 transition font-semibold text-sm">
-          Hombres
-        </a>
-        <a href="listado.html?seccion=mujer"
-           class="block px-3 py-3 rounded-lg hover:bg-gray-100 transition font-semibold text-sm">
-          Mujeres
-        </a>
-        <a href="listado.html?seccion=accesorios"
-           class="block px-3 py-3 rounded-lg hover:bg-gray-100 transition font-semibold text-sm">
-          Accesorios
-        </a>
-        <a href="listado.html"
-           class="block px-3 py-3 rounded-lg hover:bg-gray-100 transition font-semibold text-sm">
-          Ver todo
-        </a>
-      </nav>
-
-      <p class="px-3 text-[11px] uppercase tracking-[0.18em] text-gray-400 mb-2">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase mb-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         Categorías
-      </p>
-
-      <ul id="listaCategoriasMovil" class="space-y-1">
+      </h2>
+      <ul id="listaCategorias" class="space-y-2 hidden group-hover:block">
         <li>
-          <a href="listado.html"
-             class="block px-3 py-2.5 rounded-lg hover:bg-gray-100 transition text-sm">
+          <a href="listado.html" data-cat="todos" class="categoria-btn w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
             Todos
           </a>
         </li>
-        <li id="liFavoritosMovil" style="display: none;">
-          <button onclick="irAFavoritos()"
-                  class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-100 transition text-sm">
-            ♡ Favoritos
+        <li id="liFavoritosDesktop" style="display: none;">
+          <button onclick="irAFavoritos()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+            ❤️ Favoritos
           </button>
         </li>
       </ul>
 
-      <div class="mt-auto pt-5 border-t border-gray-200">
-        <button id="btnLoginMovil"
-                onclick="iniciarSesionGoogle()"
-                class="w-full text-left px-3 py-3 rounded-lg hover:bg-gray-100 transition text-sm font-medium">
-          👤 Iniciar sesión
+      <div class="mt-auto pt-4 border-t border-gray-200">
+        <button id="btnLogin" onclick="iniciarSesionGoogle()" class="w-full flex items-center gap-3 px-1 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          <span class="text-xl">👤</span>
+          <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">Iniciar sesión</span>
         </button>
-
-        <div id="usuarioInfoMovil"
-             class="hidden items-center gap-3 px-3 py-3 cursor-pointer rounded-lg hover:bg-gray-100"
-             onclick="window.location.href='cuenta.html'">
-          <img id="fotoUsuarioMovil"
-               class="w-9 h-9 rounded-full object-cover"
-               src=""
-               alt="Usuario">
-          <div class="overflow-hidden">
-            <p id="nombreUsuarioMovil" class="text-sm font-medium truncate"></p>
-            <span class="text-xs text-gray-500">Mi cuenta</span>
+        <div id="usuarioInfo" class="hidden items-center gap-2 px-1 py-2 cursor-pointer" onclick="window.location.href='cuenta.html'">
+          <img id="fotoUsuario" class="w-8 h-8 rounded-full flex-shrink-0" src="">
+          <div class="whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <p id="nombreUsuario" class="text-xs font-medium text-black truncate"></p>
+            <span class="text-xs text-gray-500 hover:underline">Mi cuenta</span>
           </div>
         </div>
       </div>
     </aside>
-  </div>
 
-  <div class="flex flex-1">
+    <!-- Sidebar móvil (overlay) -->
+    <div id="sidebarMovil" class="hidden fixed inset-0 bg-black/70 z-50 md:hidden" onclick="toggleMenuMovil()">
+      <aside class="w-64 bg-zinc-900 h-full p-4 overflow-y-auto flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-sm font-semibold text-gray-400 uppercase">Categorías</h2>
+          <button onclick="toggleMenuMovil()" class="text-white text-xl">✕</button>
+        </div>
+        <ul id="listaCategoriasMovil" class="space-y-2">
+          <li>
+            <a href="listado.html" class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+              Todos
+            </a>
+          </li>
+          <li id="liFavoritosMovil" style="display: none;">
+            <button onclick="irAFavoritos()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+              ❤️ Favoritos
+            </button>
+          </li>
+        </ul>
+
+        <div class="mt-auto pt-4 border-t border-zinc-700">
+          <button id="btnLoginMovil" onclick="iniciarSesionGoogle()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+            👤 Iniciar sesión
+          </button>
+          <div id="usuarioInfoMovil" class="hidden items-center gap-2 px-3 py-2 cursor-pointer" onclick="window.location.href='cuenta.html'">
+            <img id="fotoUsuarioMovil" class="w-8 h-8 rounded-full flex-shrink-0" src="">
+            <div class="overflow-hidden">
+              <p id="nombreUsuarioMovil" class="text-xs font-medium text-white truncate"></p>
+              <span class="text-xs text-gray-400 hover:underline">Mi cuenta</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
 
     <!-- CONTENIDO PRINCIPAL: BIENVENIDA -->
     <main class="flex-1 min-w-0">
@@ -279,9 +180,12 @@
       <div class="w-full bg-black flex flex-col items-center justify-center">
         <img src="images/InicioEphemeral.jpeg" alt="EPHEMERAL" class="block md:hidden w-[85%] mx-auto h-[72vh] object-cover rounded-xl">
         <img src="images/InicioEphemeralPC.png" alt="EPHEMERAL" class="hidden md:block w-full max-w-[61rem] px-6 py-8 h-auto object-contain">
-        <div class="pb-6 md:pb-10 flex flex-col items-center gap-2 text-center px-4">
-          <p class="text-xs md:text-sm tracking-[0.2em] uppercase text-gray-300">Conoce nuestras secciones</p>
-          <div class="text-white text-2xl animate-bounce">↓</div>
+        <div class="pb-8 md:pb-12 pt-2 flex justify-center px-4">
+          <a href="listado.html"
+             class="btn-catalogo-hero inline-flex items-center justify-center gap-3 border border-white bg-white text-black px-7 py-3 rounded-full text-xs md:text-sm font-semibold tracking-[0.18em] uppercase hover:bg-black hover:text-white">
+            Ver catálogo
+            <span aria-hidden="true">→</span>
+          </a>
         </div>
       </div>
 
@@ -320,23 +224,17 @@
 
   <!-- FOOTER -->
   <footer class="bg-white text-black border-t border-gray-200">
-    <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-3 items-center text-center gap-5">
-
+    <div class="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 md:grid-cols-3 items-center text-center gap-3">
       <div class="flex justify-center md:justify-start">
         <img src="images/Logo.png" alt="Logo EPHEMERAL" class="h-8 object-contain">
       </div>
-
       <div>
         <h3 class="text-sm font-semibold tracking-wide">EPHEMERAL</h3>
         <p class="text-xs text-gray-600">Calidad • Estilo • Exclusividad</p>
-
-        <div class="mt-2 flex items-center justify-center gap-2">
-          <a href="https://instagram.com/ephemeral_gym_clothes"
-             target="_blank"
-             rel="noopener noreferrer"
-             class="flex items-center gap-1 group transition">
+        <div class="mt-1 flex items-center justify-center gap-2">
+          <a href="https://instagram.com/ephemeral_gym_clothes" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1 group transition">
             <img src="images/LogoInsta.png" alt="Instagram EPHEMERAL" class="h-4 w-4 object-contain">
-            <span class="text-xs text-gray-700 font-medium border-b border-transparent group-hover:border-black transition">
+            <span class="text-xs text-gray-700 font-medium border-b border-transparent group-hover:border-black transition duration-300">
               ephemeral_gym_clothes
             </span>
           </a>
@@ -352,11 +250,9 @@
           <a href="politicas.html" class="hover:text-black hover:underline">Términos</a>
         </div>
       </div>
-
       <div class="flex justify-center md:justify-end">
         <img src="images/LogoLetras.png" alt="Logo letras EPHEMERAL" class="h-8 object-contain">
       </div>
-
     </div>
   </footer>
 
@@ -427,6 +323,10 @@
 
     function renderizarSecciones() {
       const contenedor = document.getElementById('contenedorSecciones');
+
+      Object.values(intervalosCarrusel).forEach(intervalo => clearInterval(intervalo));
+      Object.keys(intervalosCarrusel).forEach(clave => delete intervalosCarrusel[clave]);
+
       contenedor.innerHTML = '';
 
     
@@ -456,17 +356,35 @@
             <div id="${idCarrusel}" class="carrusel-scroll flex gap-4 overflow-x-auto px-4 md:px-8 pb-2"
                  onmouseenter="pausarCarrusel('${idCarrusel}')" onmouseleave="reanudarCarrusel('${idCarrusel}')">
               ${productosSeccion.map(p => `
-                <div onclick="window.location.href='producto.html?id=${p.id}'"
-                     class="flex-shrink-0 w-44 md:w-56 bg-zinc-900 rounded-xl p-3 cursor-pointer hover:scale-105 transition duration-300">
-                  <div class="relative">
-                    <img src="${p.imagenes[0]}" alt="${p.nombre}" loading="lazy" class="rounded-lg mb-3 w-full h-40 md:h-56 object-cover">
+                <div class="flex-shrink-0 w-[78vw] max-w-[270px] sm:w-64 bg-zinc-900 rounded-xl shadow-lg p-3 hover:scale-105 transition duration-300">
+                  <div class="relative cursor-pointer"
+                       onclick="window.location.href='producto.html?id=${p.id}'">
+                    <img src="${p.imagenes[0]}"
+                         alt="${p.nombre}"
+                         loading="lazy"
+                         class="rounded-lg mb-3 w-full h-[220px] object-cover">
                     <button onclick="event.stopPropagation(); toggleFavorito('${p.id}', this)"
                             class="favorito-btn absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-lg">
                       ${favoritosUsuario.includes(p.id) ? '❤️' : '🤍'}
                     </button>
                   </div>
-                  <p class="text-sm font-semibold truncate">${p.nombre}</p>
-                  <p class="text-gray-400 text-xs">$${p.precio} MXN</p>
+
+                  <h3 class="text-base font-semibold truncate cursor-pointer"
+                      onclick="window.location.href='producto.html?id=${p.id}'">
+                    ${p.nombre}
+                  </h3>
+                  <p class="text-gray-400 text-sm mb-2">$${p.precio} MXN</p>
+
+                  <div class="flex gap-2">
+                    <button onclick="agregarAlCarritoRapidoPorId('${p.id}')"
+                            class="flex-1 bg-zinc-700 hover:bg-zinc-600 transition text-white px-2 py-2 rounded-lg text-xs font-semibold">
+                      Añadir
+                    </button>
+                    <button onclick="window.location.href='producto.html?id=${p.id}'"
+                            class="flex-1 bg-green-500 hover:bg-green-600 transition text-white px-2 py-2 rounded-lg text-xs font-semibold">
+                      Compra ya
+                    </button>
+                  </div>
                 </div>
               `).join('')}
             </div>
@@ -482,14 +400,22 @@
     const intervalosCarrusel = {};
 
     function iniciarAutoScroll(idCarrusel) {
+      clearInterval(intervalosCarrusel[idCarrusel]);
+
       intervalosCarrusel[idCarrusel] = setInterval(() => {
         const el = document.getElementById(idCarrusel);
-        if (!el) return;
+        if (!el) {
+          clearInterval(intervalosCarrusel[idCarrusel]);
+          return;
+        }
+
         const maxScroll = el.scrollWidth - el.clientWidth;
+        if (maxScroll <= 0) return;
+
         if (el.scrollLeft >= maxScroll - 5) {
           el.scrollTo({ left: 0, behavior: 'smooth' });
         } else {
-          el.scrollBy({ left: 220, behavior: 'smooth' });
+          el.scrollBy({ left: 270, behavior: 'smooth' });
         }
       }, 3000);
     }
@@ -500,6 +426,62 @@
 
     function reanudarCarrusel(idCarrusel) {
       iniciarAutoScroll(idCarrusel);
+    }
+
+    // ===== AÑADIR RÁPIDO DESDE LAS TARJETAS =====
+    function agregarAlCarritoRapidoPorId(productoId) {
+      const producto = todosLosProductos.find(p => p.id === productoId);
+
+      if (!producto) {
+        alert('No se pudo encontrar el producto.');
+        return;
+      }
+
+      let talla = 'Única';
+      let stockDisponible = producto.stock || 0;
+
+      if (producto.tallas && producto.tallas.length > 0 && typeof producto.tallas[0] === 'object') {
+        const tallaConStock = producto.tallas.find(t => t.stock > 0);
+
+        if (!tallaConStock) {
+          alert('Este producto no tiene stock disponible en ninguna talla.');
+          return;
+        }
+
+        talla = tallaConStock.nombre;
+        stockDisponible = tallaConStock.stock;
+      }
+
+      if (stockDisponible <= 0) {
+        alert('Este producto no tiene stock disponible.');
+        return;
+      }
+
+      const claveUnica = `${producto.id}-${talla}`;
+      const existente = carrito.find(item => item.claveUnica === claveUnica);
+
+      if (existente) {
+        if (existente.cantidad >= stockDisponible) {
+          alert(`Ya tienes el máximo disponible (${stockDisponible}) de "${producto.nombre}" (talla ${talla}) en tu carrito.`);
+          return;
+        }
+
+        existente.cantidad += 1;
+      } else {
+        carrito.push({
+          id: producto.id,
+          nombre: producto.nombre,
+          precio: producto.precio,
+          imagenes: producto.imagenes,
+          talla,
+          cantidad: 1,
+          claveUnica
+        });
+      }
+
+      guardarCarrito();
+      actualizarCarritoUI();
+      toggleCarrito();
     }
 
     // ===== CARRITO =====
@@ -692,60 +674,14 @@
       if (contenedor) contenedor.classList.add('hidden');
     }
 
-    function sincronizarBuscadorIndexMovil(valor) {
-      const desktop = document.getElementById('inputBuscadorIndex');
-      if (desktop) desktop.value = valor;
-
-      const texto = normalizarTexto(valor);
-      const contenedor = document.getElementById('sugerenciasBuscadorIndexMovil');
-
-      if (!texto) {
-        if (contenedor) contenedor.classList.add('hidden');
-        return;
-      }
-
-      const resultados = todosLosProductos
-        .filter(p => normalizarTexto(p.nombre).includes(texto))
-        .slice(0, 6);
-
-      if (resultados.length === 0) {
-        contenedor.innerHTML = `<p class="text-sm text-gray-500 p-3">Sin resultados para "${valor}"</p>`;
-      } else {
-        contenedor.innerHTML = resultados.map(p => `
-          <div onclick="window.location.href='producto.html?id=${p.id}'"
-               class="flex items-center gap-3 p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0">
-            <img src="${p.imagenes[0]}" class="w-10 h-10 object-cover rounded">
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-black truncate">${p.nombre}</p>
-              <p class="text-xs text-gray-500">$${p.precio} MXN</p>
-            </div>
-          </div>
-        `).join('');
-      }
-
-      contenedor.classList.remove('hidden');
-    }
-
     function irABuscarIndex() {
       const texto = document.getElementById('inputBuscadorIndex').value.trim();
       window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
     }
 
-    function irABuscarIndexMovil() {
-      const texto = document.getElementById('inputBuscadorIndexMovil').value.trim();
-      window.location.href = texto ? `listado.html?buscar=${encodeURIComponent(texto)}` : 'listado.html';
-    }
-
     document.addEventListener('click', (e) => {
-      const desktopWrap = document.getElementById('inputBuscadorIndex')?.parentElement;
-      const movilWrap = document.getElementById('inputBuscadorIndexMovil')?.parentElement;
-      const dentroDesktop = desktopWrap?.contains(e.target);
-      const dentroMovil = movilWrap?.contains(e.target);
-
-      if (!dentroDesktop) ocultarSugerenciasIndex();
-      if (!dentroMovil) {
-        document.getElementById('sugerenciasBuscadorIndexMovil')?.classList.add('hidden');
-      }
+      const dentroBuscador = document.getElementById('inputBuscadorIndex')?.parentElement.contains(e.target);
+      if (!dentroBuscador) ocultarSugerenciasIndex();
     });
 
     // ===== LOGIN USUARIO (Google) =====
@@ -766,10 +702,8 @@
       const linkAdmin = document.getElementById('linkAdmin');
       if (user && user.email === 'ephemeralpagweb@gmail.com') {
         linkAdmin.classList.remove('hidden');
-        linkAdmin.classList.add('flex');
       } else {
         linkAdmin.classList.add('hidden');
-        linkAdmin.classList.remove('flex');
       }
 
       const btnLogin = document.getElementById('btnLogin');
