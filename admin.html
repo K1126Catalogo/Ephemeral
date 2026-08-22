@@ -1065,149 +1065,285 @@
       vincularAccionesPedidos(contenedor);
     }
 
-    // ===== CONFIRMAR VENTA (con verificación de stock y de subtotal contra precios actuales) =====
+    // ===== INVENTARIO: AGRUPAR CANTIDADES DEL PEDIDO =====
+    // Un mismo producto puede aparecer en varias líneas (por ejemplo, tallas distintas).
+    // Agrupar evita actualizar el mismo documento varias veces con datos viejos.
+    function agruparCantidadesPedido(productos) {
+      const agrupados = new Map();
+
+      (Array.isArray(productos) ? productos : []).forEach(item => {
+        if (!item || !item.id) return;
+
+        if (!agrupados.has(item.id)) {
+          agrupados.set(item.id, {
+            productoId: item.id,
+            nombre: item.nombre || 'Producto',
+            cantidadTotal: 0,
+            porTalla: new Map()
+          });
+        }
+
+        const grupo = agrupados.get(item.id);
+        const cantidad = Number(item.cantidad) || 0;
+        const talla = item.talla || 'Única';
+
+        grupo.cantidadTotal += cantidad;
+        grupo.porTalla.set(talla, (grupo.porTalla.get(talla) || 0) + cantidad);
+      });
+
+      return agrupados;
+    }
+
+    // ===== CONFIRMAR VENTA =====
+    // Stock + estado del pedido se modifican dentro de UNA transacción.
+    // Si cualquier parte falla, Firestore no aplica ningún cambio.
     async function confirmarVenta(pedidoId) {
       const pedido = pedidosPendientes.find(p => p.id === pedidoId);
       if (!pedido) return;
 
-      // Verificar stock actual Y precio actual antes de confirmar
-      const advertenciasStock = [];
+      // Mantener la advertencia de precios actuales como información para el admin.
+      // El precio válido del pedido es el que quedó guardado al crearlo; este aviso solo
+      // informa si después se cambió el precio del catálogo.
       const advertenciasPrecio = [];
-      const datosProductos = {};
-      let subtotalReal = 0;
-      let huboProductoFaltante = false;
+      let subtotalActualCatalogo = 0;
+      let pudoCalcularSubtotalActual = true;
 
-      for (const item of pedido.productos) {
-        const productoRef = db.collection('productos').doc(item.id);
-        const productoDoc = await productoRef.get();
+      try {
+        const idsUnicos = [...new Set((pedido.productos || []).map(item => item.id).filter(Boolean))];
+        const docs = await Promise.all(idsUnicos.map(id => db.collection('productos').doc(id).get()));
+        const productosActuales = new Map(docs.filter(doc => doc.exists).map(doc => [doc.id, doc.data()]));
 
-        if (!productoDoc.exists) {
-          advertenciasStock.push(`"${item.nombre}" ya no existe en el catálogo.`);
-          huboProductoFaltante = true;
-          continue;
-        }
+        for (const item of (pedido.productos || [])) {
+          const productoActual = productosActuales.get(item.id);
+          if (!productoActual) {
+            pudoCalcularSubtotalActual = false;
+            continue;
+          }
 
-        const productoData = productoDoc.data();
-        datosProductos[item.id] = productoData;
+          const precioActual = typeof productoActual.precio === 'number' ? productoActual.precio : item.precio;
+          subtotalActualCatalogo += precioActual * item.cantidad;
 
-        // --- Verificación de stock ---
-        if (productoData.tallas && productoData.tallas.length > 0 && typeof productoData.tallas[0] === 'object') {
-          const talla = productoData.tallas.find(t => t.nombre === item.talla);
-          const stockActual = talla ? talla.stock : 0;
-          if (stockActual < item.cantidad) {
-            advertenciasStock.push(`"${item.nombre}" (${item.talla}): stock actual ${stockActual}, este pedido pide ${item.cantidad}.`);
+          if (precioActual !== item.precio) {
+            const diferencia = precioActual - item.precio;
+            const signo = diferencia > 0 ? '+' : '';
+            advertenciasPrecio.push(
+              `"${item.nombre}": pedido $${item.precio} MXN, precio actual $${precioActual} MXN (${signo}${diferencia} c/u).`
+            );
           }
         }
-
-        // --- Verificación de precio/subtotal ---
-        const precioActual = typeof productoData.precio === 'number' ? productoData.precio : item.precio;
-        subtotalReal += precioActual * item.cantidad;
-
-        if (precioActual !== item.precio) {
-          const diferenciaUnitaria = precioActual - item.precio;
-          const signo = diferenciaUnitaria > 0 ? '+' : '';
-          advertenciasPrecio.push(
-            `"${item.nombre}": se cobró $${item.precio} MXN, precio actual $${precioActual} MXN (${signo}${diferenciaUnitaria} c/u).`
-          );
-        }
+      } catch (error) {
+        console.error('No se pudo comparar precios actuales:', error);
+        pudoCalcularSubtotalActual = false;
       }
 
-      // Si algún producto ya no existe, no podemos calcular un subtotal real confiable
-      const diferenciaSubtotal = subtotalReal - pedido.subtotal;
-      const haySubtotalDistinto = !huboProductoFaltante && diferenciaSubtotal !== 0;
+      let mensaje = '¿Confirmar esta venta? El stock y el estado del pedido se actualizarán juntos.';
 
-      let mensaje = '¿Confirmar esta venta? Se descontará el stock correspondiente.';
-      const bloques = [];
+      if (advertenciasPrecio.length > 0) {
+        mensaje = '⚠️ Los precios del catálogo cambiaron desde que se creó este pedido:\n\n' +
+          advertenciasPrecio.join('\n');
 
-      if (advertenciasStock.length > 0) {
-        bloques.push('📦 Posible stock insuficiente:\n' + advertenciasStock.join('\n'));
-      }
-
-      if (advertenciasPrecio.length > 0 || haySubtotalDistinto) {
-        let bloquePrecio = '💰 El subtotal del pedido no coincide con los precios actuales:\n';
-        if (advertenciasPrecio.length > 0) {
-          bloquePrecio += advertenciasPrecio.join('\n') + '\n';
+        if (pudoCalcularSubtotalActual) {
+          mensaje += `\n\nSubtotal del pedido: $${pedido.subtotal} MXN` +
+                     `\nSubtotal con precios actuales: $${subtotalActualCatalogo} MXN`;
         }
-        if (!huboProductoFaltante) {
-          const signoTotal = diferenciaSubtotal > 0 ? '+' : '';
-          bloquePrecio += `Subtotal cobrado: $${pedido.subtotal} MXN · Subtotal con precios actuales: $${subtotalReal} MXN (${signoTotal}${diferenciaSubtotal} MXN)`;
-        } else {
-          bloquePrecio += 'No se pudo calcular el subtotal real porque al menos un producto ya no existe.';
-        }
-        bloques.push(bloquePrecio);
-      }
 
-      if (bloques.length > 0) {
-        mensaje = '⚠️ ATENCIÓN antes de confirmar:\n\n' + bloques.join('\n\n') +
-          '\n\n¿Confirmar de todas formas?';
+        mensaje += '\n\nEl pedido conservará el precio con el que fue registrado. ¿Confirmar venta?';
       }
 
       if (!confirm(mensaje)) return;
 
+      const pedidoRef = db.collection('pedidos').doc(pedidoId);
+      const agrupados = agruparCantidadesPedido(pedido.productos);
+
       try {
-        // Descontar stock por cada producto/talla del pedido
-        for (const item of pedido.productos) {
-          const productoRef = db.collection('productos').doc(item.id);
-          const productoData = datosProductos[item.id];
-          if (!productoData) continue;
+        await db.runTransaction(async transaction => {
+          // IMPORTANTE: todas las lecturas se hacen antes de cualquier escritura.
+          const pedidoDoc = await transaction.get(pedidoRef);
 
-          if (productoData.tallas && productoData.tallas.length > 0 && typeof productoData.tallas[0] === 'object') {
-            const nuevasTallas = productoData.tallas.map(t => {
-              if (t.nombre === item.talla) {
-                return { nombre: t.nombre, stock: Math.max(0, t.stock - item.cantidad) };
-              }
-              return t;
-            });
-            await productoRef.update({ tallas: nuevasTallas });
+          if (!pedidoDoc.exists) {
+            throw new Error('El pedido ya no existe.');
           }
-        }
 
-        await db.collection('pedidos').doc(pedidoId).update({
-          estado: 'confirmado',
-          fechaConfirmacion: firebase.firestore.FieldValue.serverTimestamp()
+          const pedidoActual = pedidoDoc.data();
+          if (pedidoActual.estado !== 'pendiente') {
+            throw new Error(`El pedido ya no está pendiente (estado actual: ${pedidoActual.estado || 'desconocido'}).`);
+          }
+
+          const snapshotsProductos = new Map();
+
+          for (const [productoId] of agrupados) {
+            const ref = db.collection('productos').doc(productoId);
+            const doc = await transaction.get(ref);
+            snapshotsProductos.set(productoId, { ref, doc });
+          }
+
+          // Después de terminar TODAS las lecturas, validamos y escribimos.
+          for (const [productoId, grupo] of agrupados) {
+            const entrada = snapshotsProductos.get(productoId);
+
+            if (!entrada || !entrada.doc.exists) {
+              throw new Error(`El producto "${grupo.nombre}" ya no existe en el catálogo.`);
+            }
+
+            const productoData = entrada.doc.data();
+
+            // Productos actuales con tallas/stock por talla.
+            if (Array.isArray(productoData.tallas) &&
+                productoData.tallas.length > 0 &&
+                typeof productoData.tallas[0] === 'object') {
+
+              for (const [nombreTalla, cantidadPedida] of grupo.porTalla) {
+                const tallaActual = productoData.tallas.find(t => t.nombre === nombreTalla);
+
+                if (!tallaActual) {
+                  throw new Error(`La talla "${nombreTalla}" de "${grupo.nombre}" ya no existe.`);
+                }
+
+                const stockActual = Number(tallaActual.stock) || 0;
+                if (stockActual < cantidadPedida) {
+                  throw new Error(
+                    `Stock insuficiente de "${grupo.nombre}" (${nombreTalla}). ` +
+                    `Disponible: ${stockActual}; pedido: ${cantidadPedida}.`
+                  );
+                }
+              }
+
+              const nuevasTallas = productoData.tallas.map(t => ({
+                ...t,
+                stock: (Number(t.stock) || 0) - (grupo.porTalla.get(t.nombre) || 0)
+              }));
+
+              transaction.update(entrada.ref, { tallas: nuevasTallas });
+
+            } else {
+              // Compatibilidad con productos antiguos que usaban "stock" directo.
+              const stockActual = Number(productoData.stock) || 0;
+
+              if (stockActual < grupo.cantidadTotal) {
+                throw new Error(
+                  `Stock insuficiente de "${grupo.nombre}". ` +
+                  `Disponible: ${stockActual}; pedido: ${grupo.cantidadTotal}.`
+                );
+              }
+
+              transaction.update(entrada.ref, {
+                stock: stockActual - grupo.cantidadTotal
+              });
+            }
+          }
+
+          transaction.update(pedidoRef, {
+            estado: 'confirmado',
+            fechaConfirmacion: firebase.firestore.FieldValue.serverTimestamp()
+          });
         });
 
         await cargarPedidos();
         await cargarListaProductos();
+
       } catch (error) {
-        alert('Error al confirmar venta: ' + error.message);
+        console.error('Error en transacción de confirmación:', error);
+        alert('No se pudo confirmar la venta. No se descontó ningún stock.\n\n' + error.message);
       }
     }
 
+    // ===== DESHACER CONFIRMACIÓN =====
+    // También es transaccional: reponer stock y volver el pedido a pendiente sucede junto.
     async function deshacerConfirmacion(pedidoId) {
       if (!confirm('¿Deshacer esta confirmación? El stock se repondrá y el pedido volverá a pendiente.')) return;
 
       const pedido = pedidosHistorial.find(p => p.id === pedidoId);
       if (!pedido) return;
 
+      const pedidoRef = db.collection('pedidos').doc(pedidoId);
+      const agrupados = agruparCantidadesPedido(pedido.productos);
+
       try {
-        // Reponer stock
-        for (const item of pedido.productos) {
-          const productoRef = db.collection('productos').doc(item.id);
-          const productoDoc = await productoRef.get();
-          if (!productoDoc.exists) continue;
+        await db.runTransaction(async transaction => {
+          // Todas las lecturas primero.
+          const pedidoDoc = await transaction.get(pedidoRef);
 
-          const productoData = productoDoc.data();
-          if (productoData.tallas && productoData.tallas.length > 0 && typeof productoData.tallas[0] === 'object') {
-            const nuevasTallas = productoData.tallas.map(t => {
-              if (t.nombre === item.talla) {
-                return { nombre: t.nombre, stock: t.stock + item.cantidad };
-              }
-              return t;
-            });
-            await productoRef.update({ tallas: nuevasTallas });
+          if (!pedidoDoc.exists) {
+            throw new Error('El pedido ya no existe.');
           }
-        }
 
-        await db.collection('pedidos').doc(pedidoId).update({
-          estado: 'pendiente',
-          fechaConfirmacion: firebase.firestore.FieldValue.delete()
+          const pedidoActual = pedidoDoc.data();
+          if (pedidoActual.estado !== 'confirmado') {
+            throw new Error(`El pedido ya no está confirmado (estado actual: ${pedidoActual.estado || 'desconocido'}).`);
+          }
+
+          const snapshotsProductos = new Map();
+
+          for (const [productoId] of agrupados) {
+            const ref = db.collection('productos').doc(productoId);
+            const doc = await transaction.get(ref);
+            snapshotsProductos.set(productoId, { ref, doc });
+          }
+
+          // Validar primero que podamos reponer TODO el pedido.
+          for (const [productoId, grupo] of agrupados) {
+            const entrada = snapshotsProductos.get(productoId);
+
+            if (!entrada || !entrada.doc.exists) {
+              throw new Error(
+                `No se puede deshacer: el producto "${grupo.nombre}" ya no existe. ` +
+                'El pedido permanecerá confirmado para no desajustar el inventario.'
+              );
+            }
+
+            const productoData = entrada.doc.data();
+
+            if (Array.isArray(productoData.tallas) &&
+                productoData.tallas.length > 0 &&
+                typeof productoData.tallas[0] === 'object') {
+
+              for (const [nombreTalla] of grupo.porTalla) {
+                const existeTalla = productoData.tallas.some(t => t.nombre === nombreTalla);
+                if (!existeTalla) {
+                  throw new Error(
+                    `No se puede deshacer: la talla "${nombreTalla}" de "${grupo.nombre}" ya no existe.`
+                  );
+                }
+              }
+            }
+          }
+
+          // Una vez validado todo, reponer existencias.
+          for (const [productoId, grupo] of agrupados) {
+            const entrada = snapshotsProductos.get(productoId);
+            const productoData = entrada.doc.data();
+
+            if (Array.isArray(productoData.tallas) &&
+                productoData.tallas.length > 0 &&
+                typeof productoData.tallas[0] === 'object') {
+
+              const nuevasTallas = productoData.tallas.map(t => ({
+                ...t,
+                stock: (Number(t.stock) || 0) + (grupo.porTalla.get(t.nombre) || 0)
+              }));
+
+              transaction.update(entrada.ref, { tallas: nuevasTallas });
+
+            } else {
+              const stockActual = Number(productoData.stock) || 0;
+              transaction.update(entrada.ref, {
+                stock: stockActual + grupo.cantidadTotal
+              });
+            }
+          }
+
+          transaction.update(pedidoRef, {
+            estado: 'pendiente',
+            fechaConfirmacion: firebase.firestore.FieldValue.delete()
+          });
         });
 
         await cargarPedidos();
         await cargarListaProductos();
+
       } catch (error) {
-        alert('Error al deshacer: ' + error.message);
+        console.error('Error en transacción al deshacer:', error);
+        alert('No se pudo deshacer la confirmación. No se modificó ningún stock.\n\n' + error.message);
       }
     }
 
