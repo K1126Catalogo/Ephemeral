@@ -242,7 +242,7 @@
   </div>
 
   <script>
-    const IMGBB_API_KEY = "efe873ac64539ab66954ea4ad3f8330a";
+    const IMGBB_WORKER_URL = "https://ephemeral-images.ephemeralpagweb.workers.dev/upload";
     const CORREO_ADMIN = "ephemeralpagweb@gmail.com";
     let urlsImagenesSubidas = [];
     let todosLosProductosAdmin = [];
@@ -582,44 +582,78 @@
       return tallas;
     }
 
-    // ===== SUBIDA DE IMÁGENES (ImgBB) =====
+    // ===== SUBIDA DE IMÁGENES (Cloudflare Worker -> ImgBB) =====
     document.getElementById('fArchivoImagenes').addEventListener('change', async function(e) {
       const archivos = Array.from(e.target.files);
       const estado = document.getElementById('estadoSubida');
       const preview = document.getElementById('previewImagenes');
 
+      if (archivos.length === 0) return;
+
+      const usuario = auth.currentUser;
+
+      if (!usuario || usuario.email !== CORREO_ADMIN) {
+        estado.textContent = 'Tu sesión de administrador no es válida. Vuelve a iniciar sesión.';
+        e.target.value = '';
+        return;
+      }
+
       estado.textContent = `Subiendo ${archivos.length} imagen(es)...`;
       urlsImagenesSubidas = [];
       preview.innerHTML = '';
 
-      for (const archivo of archivos) {
-        const formData = new FormData();
-        formData.append('image', archivo);
+      try {
+        // Firebase renueva automáticamente el ID Token cuando hace falta.
+        const idToken = await usuario.getIdToken();
 
-        try {
-          const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        for (let i = 0; i < archivos.length; i++) {
+          const archivo = archivos[i];
+          const formData = new FormData();
+          formData.append('image', archivo);
+
+          estado.textContent = `Subiendo imagen ${i + 1} de ${archivos.length}...`;
+
+          const response = await fetch(IMGBB_WORKER_URL, {
             method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${idToken}`
+            },
             body: formData
           });
-          const data = await response.json();
 
-          if (data.success) {
-            const url = data.data.url;
-            urlsImagenesSubidas.push(url);
-            const urlSegura = urlImagenSegura(url);
-            preview.insertAdjacentHTML(
-              'beforeend',
-              `<img src="${escaparHTML(urlSegura)}" class="w-16 h-16 object-cover rounded-lg border-2 border-green-500">`
-            );
+          let data;
+          try {
+            data = await response.json();
+          } catch {
+            throw new Error('El servidor de imágenes devolvió una respuesta inválida.');
           }
-        } catch (error) {
-          estado.textContent = 'Error al subir alguna imagen';
-          console.error(error);
-        }
-      }
 
-      document.getElementById('fImagenes').value = urlsImagenesSubidas.join(',');
-      estado.textContent = `${urlsImagenesSubidas.length} imagen(es) subida(s) correctamente ✓`;
+          if (!response.ok || !data.ok || !data.url) {
+            throw new Error(data.error || `Error al subir la imagen ${i + 1}.`);
+          }
+
+          const url = data.url;
+          urlsImagenesSubidas.push(url);
+
+          const urlSegura = urlImagenSegura(url);
+          preview.insertAdjacentHTML(
+            'beforeend',
+            `<img src="${escaparHTML(urlSegura)}" class="w-16 h-16 object-cover rounded-lg border-2 border-green-500">`
+          );
+        }
+
+        document.getElementById('fImagenes').value = urlsImagenesSubidas.join(',');
+        estado.textContent = `${urlsImagenesSubidas.length} imagen(es) subida(s) correctamente ✓`;
+
+      } catch (error) {
+        console.error('Error al subir imágenes mediante Cloudflare Worker:', error);
+        estado.textContent = `Error al subir imágenes: ${error.message}`;
+
+        // Evita guardar un producto con una carga parcial sin que el admin lo note.
+        urlsImagenesSubidas = [];
+        document.getElementById('fImagenes').value = '';
+        preview.innerHTML = '';
+      }
     });
 
     // ===== CRUD PRODUCTOS =====
