@@ -424,58 +424,66 @@
       }
 
       let datosDireccion;
+      const usandoDireccionGuardada = Boolean(direccionSeleccionadaId);
 
-     
-    if (direccionSeleccionadaId) {
-  const direccionGuardada = direccionesGuardadas.find(
-    d => d.id === direccionSeleccionadaId
-  );
+      if (usandoDireccionGuardada) {
+        const direccionGuardada = direccionesGuardadas.find(
+          d => d.id === direccionSeleccionadaId
+        );
 
-  if (!direccionGuardada) {
-    errorEl.textContent = 'No se encontró la dirección seleccionada.';
-    errorEl.classList.remove('hidden');
-    return;
-  }
-
-  datosDireccion = {
-    nombre: direccionGuardada.nombre || '',
-    telefono: direccionGuardada.telefono || '',
-    calle: direccionGuardada.calle || '',
-    colonia: direccionGuardada.colonia || '',
-    ciudad: direccionGuardada.ciudad || '',
-    estado: direccionGuardada.estado || '',
-    cp: direccionGuardada.cp || '',
-    referencias: direccionGuardada.referencias || ''
-  };
-} else {
-  datosDireccion = {
-    nombre: document.getElementById('dNombre').value.trim(),
-    telefono: document.getElementById('dTelefono').value.trim(),
-    calle: document.getElementById('dCalle').value.trim(),
-    colonia: document.getElementById('dColonia').value.trim(),
-    ciudad: document.getElementById('dCiudad').value.trim(),
-    estado: document.getElementById('dEstado').value.trim(),
-    cp: document.getElementById('dCP').value.trim(),
-    referencias: document.getElementById('dReferencias').value.trim()
-  };
-}
-
-        if (!datosDireccion.nombre || !datosDireccion.telefono || !datosDireccion.calle ||
-            !datosDireccion.colonia || !datosDireccion.ciudad || !datosDireccion.estado || !datosDireccion.cp) {
-          errorEl.textContent = 'Completa todos los campos de dirección (referencias es opcional)';
+        if (!direccionGuardada) {
+          errorEl.textContent = 'No se encontró la dirección seleccionada.';
           errorEl.classList.remove('hidden');
-          window.scrollTo(0, document.getElementById('seccionFormularioDireccion').offsetTop - 20);
           return;
         }
 
-        // Guardar dirección si el usuario inició sesión y marcó la casilla
-        if (usuarioActual && document.getElementById('chkGuardarDireccion').checked) {
-          try {
-            await db.collection('usuarios').doc(usuarioActual.uid)
-              .collection('direcciones').add(datosDireccion);
-          } catch (error) {
-            console.error('Error al guardar dirección:', error);
-          }
+        // Copiamos solo los campos de la dirección que necesita el pedido.
+        // El id interno del documento NO se envía dentro de "direccion".
+        datosDireccion = {
+          nombre: direccionGuardada.nombre || '',
+          telefono: direccionGuardada.telefono || '',
+          calle: direccionGuardada.calle || '',
+          colonia: direccionGuardada.colonia || '',
+          ciudad: direccionGuardada.ciudad || '',
+          estado: direccionGuardada.estado || '',
+          cp: direccionGuardada.cp || '',
+          referencias: direccionGuardada.referencias || ''
+        };
+      } else {
+        datosDireccion = {
+          nombre: document.getElementById('dNombre').value.trim(),
+          telefono: document.getElementById('dTelefono').value.trim(),
+          calle: document.getElementById('dCalle').value.trim(),
+          colonia: document.getElementById('dColonia').value.trim(),
+          ciudad: document.getElementById('dCiudad').value.trim(),
+          estado: document.getElementById('dEstado').value.trim(),
+          cp: document.getElementById('dCP').value.trim(),
+          referencias: document.getElementById('dReferencias').value.trim()
+        };
+      }
+
+      // Validar tanto direcciones guardadas como direcciones nuevas
+      if (!datosDireccion.nombre || !datosDireccion.telefono || !datosDireccion.calle ||
+          !datosDireccion.colonia || !datosDireccion.ciudad || !datosDireccion.estado || !datosDireccion.cp) {
+        errorEl.textContent = 'Completa todos los campos de dirección (referencias es opcional)';
+        errorEl.classList.remove('hidden');
+
+        if (!usandoDireccionGuardada) {
+          window.scrollTo(0, document.getElementById('seccionFormularioDireccion').offsetTop - 20);
+        }
+        return;
+      }
+
+      // Solo guardar una dirección cuando el usuario escribió una NUEVA.
+      // Si eligió una guardada, no la duplicamos.
+      if (!usandoDireccionGuardada &&
+          usuarioActual &&
+          document.getElementById('chkGuardarDireccion').checked) {
+        try {
+          await db.collection('usuarios').doc(usuarioActual.uid)
+            .collection('direcciones').add(datosDireccion);
+        } catch (error) {
+          console.error('Error al guardar dirección:', error);
         }
       }
 
