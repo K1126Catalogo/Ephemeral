@@ -7,12 +7,134 @@
   <link rel="icon" type="image/png" href="images/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <style>body { font-family: 'Inter', sans-serif; }</style>
+  <style>
+    html, body { overflow-x: hidden; max-width: 100%; }
+    body { font-family: 'Inter', sans-serif; }
+
+    .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 4px;
+    }
+  </style>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+
+    </div>
+  </div>
+
+  <!-- CARRITO LATERAL -->
+  <div id="carritoOverlay"
+       class="hidden fixed inset-0 bg-black/70 z-50"
+       onclick="toggleCarrito()">
+
+    <div class="absolute right-0 top-0 w-full sm:w-96 h-full bg-zinc-900 p-6 overflow-y-auto"
+         onclick="event.stopPropagation()">
+
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold">Tu Carrito</h2>
+        <button onclick="toggleCarrito()" class="text-2xl">✕</button>
+      </div>
+
+      <div id="carritoItems" class="space-y-4"></div>
+
+      <p id="carritoVacio"
+         class="text-gray-500 text-center mt-6">
+        Tu carrito está vacío
+      </p>
+
+      <div id="carritoTotal"
+           class="hidden mt-6 border-t border-zinc-700 pt-4">
+
+        <div class="flex justify-between text-lg font-semibold mb-4">
+          <span>Total:</span>
+          <span id="totalPrecio">$0 MXN</span>
+        </div>
+
+        <button onclick="window.location.href='pedido.html'"
+                class="w-full bg-green-500 hover:bg-green-600 transition text-white py-3 rounded-lg font-semibold">
+          Finalizar pedido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-white text-black border-t border-gray-200 md:pl-16">
+    <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-3 items-center text-center gap-5">
+
+      <div class="flex justify-center md:justify-start">
+        <img src="images/Logo.png"
+             alt="Logo EPHEMERAL"
+             class="h-8 object-contain">
+      </div>
+
+      <div>
+        <h3 class="text-sm font-semibold tracking-wide">
+          EPHEMERAL
+        </h3>
+
+        <p class="text-xs text-gray-600">
+          Calidad • Estilo • Exclusividad
+        </p>
+
+        <div class="mt-1 flex items-center justify-center gap-2">
+          <a href="https://instagram.com/ephemeral_gym_clothes"
+             target="_blank"
+             rel="noopener noreferrer"
+             class="flex items-center gap-1 group transition">
+
+            <img src="images/LogoInsta.png"
+                 alt="Instagram EPHEMERAL"
+                 class="h-4 w-4 object-contain">
+
+            <span class="text-xs text-gray-700 font-medium border-b border-transparent group-hover:border-black transition duration-300">
+              ephemeral_gym_clothes
+            </span>
+          </a>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+          <a href="politicas.html#envios"
+             class="hover:text-black hover:underline">
+            Envíos
+          </a>
+
+          <span>·</span>
+
+          <a href="politicas.html#cambios"
+             class="hover:text-black hover:underline">
+            Cambios y devoluciones
+          </a>
+
+          <span>·</span>
+
+          <a href="politicas.html#privacidad"
+             class="hover:text-black hover:underline">
+            Privacidad
+          </a>
+
+          <span>·</span>
+
+          <a href="politicas.html"
+             class="hover:text-black hover:underline">
+            Términos
+          </a>
+        </div>
+      </div>
+
+      <div class="flex justify-center md:justify-end">
+        <img src="images/LogoLetras.png"
+             alt="Logo letras EPHEMERAL"
+             class="h-8 object-contain">
+      </div>
+
+    </div>
+  </footer>
 
   <script>
     const firebaseConfig = {
@@ -32,13 +154,189 @@
 <body class="bg-black text-white min-h-screen flex flex-col">
 
   <!-- HEADER -->
-  <header class="bg-white shadow-md py-4 border-b border-zinc-800 sticky top-0 z-40">
-    <div class="max-w-3xl mx-auto flex items-center justify-center px-4">
-      <a href="index.html">
-        <img src="images/LogoCompleto.png" alt="EPHEMERAL" class="h-12 object-contain cursor-pointer">
-      </a>
+  <header class="bg-white shadow-md py-4 border-b border-zinc-800 fixed top-0 left-0 right-0 z-40 md:pl-16">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 gap-4">
+
+      <button id="btnMenuMovil"
+              class="md:hidden text-black text-2xl">
+        ☰
+      </button>
+
+      <div class="flex-1 flex justify-center">
+        <a href="index.html">
+          <img src="images/LogoCompleto.png"
+               alt="Logo EPHEMERAL"
+               class="h-12 object-contain cursor-pointer">
+        </a>
+      </div>
+
+      <div class="flex items-center gap-4">
+
+        <div class="relative flex items-center">
+          <input id="inputBuscadorCuenta"
+                 type="text"
+                 placeholder="Buscar..."
+                 class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-24 sm:w-40 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
+                 oninput="filtrarSugerenciasCuenta()"
+                 onfocus="filtrarSugerenciasCuenta()"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscarCuenta();}">
+
+          <button onclick="irABuscarCuenta()"
+                  class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition"
+                  title="Buscar">
+            🔍
+          </button>
+
+          <div id="sugerenciasBuscadorCuenta"
+               class="hidden absolute top-full mt-1 right-0 w-72 bg-white rounded-lg shadow-xl max-h-80 overflow-y-auto z-50">
+          </div>
+        </div>
+
+        <a href="admin.html"
+           id="linkAdmin"
+           class="hidden text-black text-xl"
+           title="Panel Admin">
+          ⚙️
+        </a>
+
+        <button onclick="toggleCarrito()"
+                class="relative text-black text-2xl">
+          🛒
+          <span id="contadorCarrito"
+                class="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+            0
+          </span>
+        </button>
+      </div>
+
     </div>
   </header>
+
+  <!-- SIDEBAR PC -->
+  <aside id="sidebar"
+         class="hidden md:flex group fixed top-0 left-0 h-screen w-16 hover:w-56 bg-white border-r border-gray-200 p-4 sidebar-scroll overflow-y-auto overflow-x-hidden transition-all duration-300 flex-col z-50">
+
+    <div class="flex md:group-hover:hidden justify-center items-center h-12 mb-4">
+      <span class="text-2xl text-black">☰</span>
+    </div>
+
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      Categorías
+    </h2>
+
+    <ul id="listaCategoriasCuenta" class="space-y-2 hidden group-hover:block">
+      <li>
+        <a href="listado.html"
+           class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          Todos
+        </a>
+      </li>
+
+      <li id="liFavoritosCuentaDesktop" style="display:none;">
+        <a href="listado.html?favoritos=1"
+           class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          ❤️ Favoritos
+        </a>
+      </li>
+    </ul>
+
+    <div class="mt-auto pt-4 border-t border-gray-200">
+      <div id="usuarioInfoSidebar"
+           class="hidden items-center gap-2 px-1 py-2 cursor-pointer"
+           onclick="window.location.href='cuenta.html'">
+
+        <img id="fotoUsuarioSidebar"
+             class="w-8 h-8 rounded-full flex-shrink-0"
+             src=""
+             alt="Usuario">
+
+        <div class="whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <p id="nombreUsuarioSidebar"
+             class="text-xs font-medium text-black truncate"></p>
+          <span class="text-xs text-gray-500 hover:underline">
+            Mi cuenta
+          </span>
+        </div>
+      </div>
+
+      <button id="btnLoginSidebar"
+              onclick="iniciarSesionGoogle()"
+              class="w-full flex items-center gap-3 px-1 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+        <span class="text-xl">👤</span>
+        <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          Iniciar sesión
+        </span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- SIDEBAR MÓVIL -->
+  <div id="sidebarMovil"
+       class="hidden fixed inset-0 bg-black/70 z-50 md:hidden"
+       onclick="toggleMenuMovil()">
+
+    <aside class="w-64 bg-zinc-900 h-full p-4 overflow-y-auto flex flex-col"
+           onclick="event.stopPropagation()">
+
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase">
+          Categorías
+        </h2>
+
+        <button onclick="toggleMenuMovil()"
+                class="text-white text-xl">
+          ✕
+        </button>
+      </div>
+
+      <ul id="listaCategoriasCuentaMovil" class="space-y-2">
+        <li>
+          <a href="listado.html"
+             class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+            Todos
+          </a>
+        </li>
+
+        <li id="liFavoritosCuentaMovil" style="display:none;">
+          <a href="listado.html?favoritos=1"
+             class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+            ❤️ Favoritos
+          </a>
+        </li>
+      </ul>
+
+      <div class="mt-auto pt-4 border-t border-zinc-700">
+
+        <button id="btnLoginSidebarMovil"
+                onclick="iniciarSesionGoogle()"
+                class="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+          👤 Iniciar sesión
+        </button>
+
+        <div id="usuarioInfoSidebarMovil"
+             class="hidden items-center gap-2 px-3 py-2 cursor-pointer"
+             onclick="window.location.href='cuenta.html'">
+
+          <img id="fotoUsuarioSidebarMovil"
+               class="w-8 h-8 rounded-full flex-shrink-0"
+               src=""
+               alt="Usuario">
+
+          <div class="overflow-hidden">
+            <p id="nombreUsuarioSidebarMovil"
+               class="text-xs font-medium text-white truncate"></p>
+            <span class="text-xs text-gray-400 hover:underline">
+              Mi cuenta
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+  </div>
+
+  <div class="flex flex-1 md:pl-16 pt-20">
+    <div class="flex-1 flex flex-col min-w-0">
 
   <!-- PANTALLA SIN SESIÓN -->
   <div id="sinSesion" class="hidden flex-1 flex items-center justify-center px-4">
@@ -151,6 +449,242 @@
   </div>
 
   <script>
+    let carrito = JSON.parse(sessionStorage.getItem('carrito')) || [];
+    let productosNavegacionCuenta = [];
+
+    function normalizarTextoCuenta(str) {
+      return String(str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function irABuscarCuenta() {
+      const texto = document.getElementById('inputBuscadorCuenta').value.trim();
+
+      window.location.href = texto
+        ? `listado.html?buscar=${encodeURIComponent(texto)}`
+        : 'listado.html';
+    }
+
+    function filtrarSugerenciasCuenta() {
+      const input = document.getElementById('inputBuscadorCuenta');
+      const contenedor = document.getElementById('sugerenciasBuscadorCuenta');
+      const texto = normalizarTextoCuenta(input.value);
+
+      if (!texto) {
+        contenedor.classList.add('hidden');
+        return;
+      }
+
+      const resultados = productosNavegacionCuenta
+        .filter(p => normalizarTextoCuenta(p.nombre).includes(texto))
+        .slice(0, 6);
+
+      if (resultados.length === 0) {
+        contenedor.innerHTML =
+          `<p class="text-sm text-gray-500 p-3">Sin resultados</p>`;
+      } else {
+        contenedor.innerHTML = resultados.map(p => `
+          <div onclick="window.location.href='producto.html?id=${p.id}'"
+               class="flex items-center gap-3 p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0">
+
+            <img src="${p.imagenes?.[0] || 'images/Logo.png'}"
+                 class="w-10 h-10 object-cover rounded">
+
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-black truncate">
+                ${p.nombre}
+              </p>
+
+              <p class="text-xs text-gray-500">
+                $${p.precio} MXN
+              </p>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      contenedor.classList.remove('hidden');
+    }
+
+    document.addEventListener('click', event => {
+      const wrapper =
+        document.getElementById('inputBuscadorCuenta')?.parentElement;
+
+      if (wrapper && !wrapper.contains(event.target)) {
+        document.getElementById('sugerenciasBuscadorCuenta')
+          ?.classList.add('hidden');
+      }
+    });
+
+    function toggleMenuMovil() {
+      document.getElementById('sidebarMovil')
+        .classList.toggle('hidden');
+    }
+
+    document.getElementById('btnMenuMovil')
+      .addEventListener('click', toggleMenuMovil);
+
+    function toggleCarrito() {
+      document.getElementById('carritoOverlay')
+        .classList.toggle('hidden');
+    }
+
+    function guardarCarritoCuenta() {
+      sessionStorage.setItem('carrito', JSON.stringify(carrito));
+    }
+
+    function actualizarCarritoCuenta() {
+      const contador = document.getElementById('contadorCarrito');
+      const carritoItems = document.getElementById('carritoItems');
+      const carritoVacio = document.getElementById('carritoVacio');
+      const carritoTotal = document.getElementById('carritoTotal');
+
+      const totalItems = carrito.reduce(
+        (sum, item) => sum + item.cantidad,
+        0
+      );
+
+      contador.textContent = totalItems;
+
+      if (carrito.length === 0) {
+        carritoItems.innerHTML = '';
+        carritoVacio.classList.remove('hidden');
+        carritoTotal.classList.add('hidden');
+        return;
+      }
+
+      carritoVacio.classList.add('hidden');
+      carritoTotal.classList.remove('hidden');
+
+      let total = 0;
+
+      carritoItems.innerHTML = carrito.map(item => {
+        total += item.precio * item.cantidad;
+        const clave = item.claveUnica || `${item.id}-${item.talla || 'Única'}`;
+
+        return `
+          <div class="flex gap-3 items-center bg-zinc-800 rounded-lg p-3">
+            <img src="${item.imagenes?.[0] || 'images/Logo.png'}"
+                 class="w-16 h-16 object-cover rounded">
+
+            <div class="flex-1">
+              <p class="text-sm font-medium">
+                ${item.nombre}
+              </p>
+
+              <p class="text-xs text-gray-400">
+                Talla: ${item.talla || 'Única'} · $${item.precio} MXN
+              </p>
+
+              <div class="flex items-center gap-2 mt-1">
+                <button onclick="cambiarCantidadCarritoCuenta('${clave}', -1)"
+                        class="bg-zinc-700 w-6 h-6 rounded text-sm">
+                  -
+                </button>
+
+                <span class="text-sm">
+                  ${item.cantidad}
+                </span>
+
+                <button onclick="cambiarCantidadCarritoCuenta('${clave}', 1)"
+                        class="bg-zinc-700 w-6 h-6 rounded text-sm">
+                  +
+                </button>
+              </div>
+            </div>
+
+            <button onclick="quitarDelCarritoCuenta('${clave}')"
+                    class="text-red-500 text-sm">
+              ✕
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('totalPrecio').textContent =
+        `$${total} MXN`;
+    }
+
+    function cambiarCantidadCarritoCuenta(clave, delta) {
+      const item = carrito.find(i =>
+        (i.claveUnica || `${i.id}-${i.talla || 'Única'}`) === clave
+      );
+
+      if (!item) return;
+
+      item.cantidad += delta;
+
+      if (item.cantidad <= 0) {
+        quitarDelCarritoCuenta(clave);
+        return;
+      }
+
+      guardarCarritoCuenta();
+      actualizarCarritoCuenta();
+    }
+
+    function quitarDelCarritoCuenta(clave) {
+      carrito = carrito.filter(i =>
+        (i.claveUnica || `${i.id}-${i.talla || 'Única'}`) !== clave
+      );
+
+      guardarCarritoCuenta();
+      actualizarCarritoCuenta();
+    }
+
+    async function cargarNavegacionCuenta() {
+      try {
+        const snapshot = await db.collection('productos').get();
+
+        productosNavegacionCuenta =
+          snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+
+        const categorias = [
+          ...new Set(
+            productosNavegacionCuenta
+              .map(p => p.categoria)
+              .filter(Boolean)
+          )
+        ].sort();
+
+        const desktop =
+          document.getElementById('listaCategoriasCuenta');
+
+        const movil =
+          document.getElementById('listaCategoriasCuentaMovil');
+
+        categorias.forEach(cat => {
+          const nombre =
+            cat.charAt(0).toUpperCase() + cat.slice(1);
+
+          desktop.insertAdjacentHTML('beforeend', `
+            <li>
+              <a href="listado.html?categoria=${encodeURIComponent(cat)}"
+                 class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+                ${nombre}
+              </a>
+            </li>
+          `);
+
+          movil.insertAdjacentHTML('beforeend', `
+            <li>
+              <a href="listado.html?categoria=${encodeURIComponent(cat)}"
+                 class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+                ${nombre}
+              </a>
+            </li>
+          `);
+        });
+      } catch (error) {
+        console.error('Error al cargar navegación:', error);
+      }
+    }
+
     let usuarioActual = null;
     let direccionesCuenta = [];
 
@@ -192,21 +726,112 @@
     auth.onAuthStateChanged(async user => {
       usuarioActual = user;
 
+      const linkAdmin = document.getElementById('linkAdmin');
+
+      const btnLoginSidebar =
+        document.getElementById('btnLoginSidebar');
+
+      const usuarioInfoSidebar =
+        document.getElementById('usuarioInfoSidebar');
+
+      const fotoUsuarioSidebar =
+        document.getElementById('fotoUsuarioSidebar');
+
+      const nombreUsuarioSidebar =
+        document.getElementById('nombreUsuarioSidebar');
+
+      const btnLoginSidebarMovil =
+        document.getElementById('btnLoginSidebarMovil');
+
+      const usuarioInfoSidebarMovil =
+        document.getElementById('usuarioInfoSidebarMovil');
+
+      const fotoUsuarioSidebarMovil =
+        document.getElementById('fotoUsuarioSidebarMovil');
+
+      const nombreUsuarioSidebarMovil =
+        document.getElementById('nombreUsuarioSidebarMovil');
+
+      const favoritosDesktop =
+        document.getElementById('liFavoritosCuentaDesktop');
+
+      const favoritosMovil =
+        document.getElementById('liFavoritosCuentaMovil');
+
       if (!user) {
-        document.getElementById('sinSesion').classList.remove('hidden');
-        document.getElementById('sinSesion').classList.add('flex');
-        document.getElementById('contenidoCuenta').classList.add('hidden');
+        document.getElementById('sinSesion')
+          .classList.remove('hidden');
+
+        document.getElementById('sinSesion')
+          .classList.add('flex');
+
+        document.getElementById('contenidoCuenta')
+          .classList.add('hidden');
+
+        btnLoginSidebar.classList.remove('hidden');
+        usuarioInfoSidebar.classList.add('hidden');
+        usuarioInfoSidebar.classList.remove('flex');
+
+        btnLoginSidebarMovil.classList.remove('hidden');
+        usuarioInfoSidebarMovil.classList.add('hidden');
+        usuarioInfoSidebarMovil.classList.remove('flex');
+
+        favoritosDesktop.style.display = 'none';
+        favoritosMovil.style.display = 'none';
+
+        linkAdmin.classList.add('hidden');
         return;
       }
 
-      document.getElementById('sinSesion').classList.add('hidden');
-      document.getElementById('sinSesion').classList.remove('flex');
-      document.getElementById('contenidoCuenta').classList.remove('hidden');
+      document.getElementById('sinSesion')
+        .classList.add('hidden');
 
-      document.getElementById('fotoUsuario').src = user.photoURL || 'images/Logo.png';
-      document.getElementById('nombreUsuarioTop').textContent = user.displayName || 'Sin nombre';
-      document.getElementById('correoUsuarioTop').textContent = user.email;
-      document.getElementById('inputNombreCuenta').value = user.displayName || '';
+      document.getElementById('sinSesion')
+        .classList.remove('flex');
+
+      document.getElementById('contenidoCuenta')
+        .classList.remove('hidden');
+
+      document.getElementById('fotoUsuario').src =
+        user.photoURL || 'images/Logo.png';
+
+      document.getElementById('nombreUsuarioTop').textContent =
+        user.displayName || 'Sin nombre';
+
+      document.getElementById('correoUsuarioTop').textContent =
+        user.email;
+
+      document.getElementById('inputNombreCuenta').value =
+        user.displayName || '';
+
+      btnLoginSidebar.classList.add('hidden');
+      usuarioInfoSidebar.classList.remove('hidden');
+      usuarioInfoSidebar.classList.add('flex');
+
+      fotoUsuarioSidebar.src =
+        user.photoURL || 'images/Logo.png';
+
+      nombreUsuarioSidebar.textContent =
+        user.displayName || user.email;
+
+      btnLoginSidebarMovil.classList.add('hidden');
+      usuarioInfoSidebarMovil.classList.remove('hidden');
+      usuarioInfoSidebarMovil.classList.add('flex');
+
+      fotoUsuarioSidebarMovil.src =
+        user.photoURL || 'images/Logo.png';
+
+      nombreUsuarioSidebarMovil.textContent =
+        user.displayName || user.email;
+
+      favoritosDesktop.style.display = '';
+      favoritosMovil.style.display = '';
+
+      if (user.email === 'ephemeralpagweb@gmail.com') {
+        linkAdmin.classList.remove('hidden');
+      } else {
+        linkAdmin.classList.add('hidden');
+      }
 
       await cargarDireccionesCuenta();
     });
@@ -466,6 +1091,10 @@
         alert('Error al cancelar: ' + error.message);
       }
     }
+    window.addEventListener('DOMContentLoaded', () => {
+      actualizarCarritoCuenta();
+      cargarNavegacionCuenta();
+    });
   </script>
 
 </body>
