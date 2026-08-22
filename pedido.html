@@ -7,7 +7,12 @@
   <link rel="icon" type="image/png" href="images/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <style>body { font-family: 'Inter', sans-serif; }</style>
+  <style>
+    html, body { overflow-x: hidden; max-width: 100%; }
+    body { font-family: 'Inter', sans-serif; }
+    .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+    .sidebar-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+  </style>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -31,15 +36,168 @@
 
 <body class="bg-black text-white min-h-screen flex flex-col">
 
-  <!-- HEADER simple -->
-  <header class="bg-white shadow-md py-4 border-b border-zinc-800 sticky top-0 z-40">
-    <div class="max-w-3xl mx-auto flex items-center justify-between px-4">
-      <a href="index.html" class="text-black text-sm">← Seguir comprando</a>
-      <img src="images/LogoCompleto.png" alt="Logo EPHEMERAL" class="h-10 object-contain">
-      <span class="w-24"></span>
+  <!-- HEADER -->
+  <header class="bg-white shadow-md py-4 border-b border-zinc-800 fixed top-0 left-0 right-0 z-40 md:pl-16">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 gap-4">
+
+      <button id="btnMenuMovil" class="md:hidden text-black text-2xl">☰</button>
+
+      <div class="flex-1 flex justify-center">
+        <a href="index.html">
+          <img src="images/LogoCompleto.png"
+               alt="Logo EPHEMERAL"
+               class="h-12 object-contain cursor-pointer">
+        </a>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="relative flex items-center">
+          <input id="inputBuscadorPedido"
+                 type="text"
+                 placeholder="Buscar..."
+                 class="border border-gray-300 rounded-l-lg px-3 py-2 text-black text-sm w-24 sm:w-40 md:w-56 focus:outline-none focus:ring-2 focus:ring-black"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault(); irABuscarPedido();}">
+          <button onclick="irABuscarPedido()"
+                  class="bg-black text-white px-3 py-2 rounded-r-lg text-sm hover:bg-zinc-800 transition"
+                  title="Buscar">
+            🔍
+          </button>
+        </div>
+
+        <a href="admin.html"
+           id="linkAdmin"
+           class="hidden text-black text-xl"
+           title="Panel Admin">⚙️</a>
+
+        <button onclick="irAResumenPedido()"
+                class="relative text-black text-2xl"
+                title="Resumen del pedido">
+          🛒
+          <span id="contadorCarritoHeader"
+                class="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+        </button>
+      </div>
+
     </div>
   </header>
 
+  <!-- SIDEBAR PC -->
+  <aside id="sidebar"
+         class="hidden md:flex group fixed top-0 left-0 h-screen w-16 hover:w-56 bg-white border-r border-gray-200 p-4 sidebar-scroll overflow-y-auto overflow-x-hidden transition-all duration-300 flex-col z-50">
+
+    <div class="flex md:group-hover:hidden justify-center items-center h-12 mb-4">
+      <span class="text-2xl text-black">☰</span>
+    </div>
+
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      Menú
+    </h2>
+
+    <ul class="space-y-2 hidden group-hover:block">
+      <li>
+        <a href="listado.html"
+           class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          ← Ver catálogo
+        </a>
+      </li>
+
+      <li>
+        <a href="index.html"
+           class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          Inicio
+        </a>
+      </li>
+
+      <li id="liFavoritosPedidoDesktop" style="display:none;">
+        <a href="listado.html?favoritos=1"
+           class="w-full block text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+          ❤️ Favoritos
+        </a>
+      </li>
+    </ul>
+
+    <div class="mt-auto pt-4 border-t border-gray-200">
+      <button id="btnLoginPedido"
+              onclick="iniciarSesionGoogle()"
+              class="w-full flex items-center gap-3 px-1 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-black whitespace-nowrap">
+        <span class="text-xl">👤</span>
+        <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          Iniciar sesión
+        </span>
+      </button>
+
+      <div id="usuarioInfoPedido"
+           class="hidden items-center gap-2 px-1 py-2 cursor-pointer"
+           onclick="window.location.href='cuenta.html'">
+        <img id="fotoUsuarioPedido"
+             class="w-8 h-8 rounded-full flex-shrink-0"
+             src=""
+             alt="Usuario">
+
+        <div class="whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <p id="nombreUsuarioPedido" class="text-xs font-medium text-black truncate"></p>
+          <span class="text-xs text-gray-500 hover:underline">Mi cuenta</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- SIDEBAR MÓVIL -->
+  <div id="sidebarMovil"
+       class="hidden fixed inset-0 bg-black/70 z-50 md:hidden"
+       onclick="toggleMenuMovil()">
+
+    <aside class="w-64 bg-zinc-900 h-full p-4 overflow-y-auto flex flex-col"
+           onclick="event.stopPropagation()">
+
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase">Menú</h2>
+        <button onclick="toggleMenuMovil()" class="text-white text-xl">✕</button>
+      </div>
+
+      <a href="listado.html"
+         class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white mb-2">
+        ← Ver catálogo
+      </a>
+
+      <a href="index.html"
+         class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white mb-2">
+        Inicio
+      </a>
+
+      <a id="liFavoritosPedidoMovil"
+         href="listado.html?favoritos=1"
+         style="display:none;"
+         class="w-full block text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+        ❤️ Favoritos
+      </a>
+
+      <div class="mt-auto pt-4 border-t border-zinc-700">
+        <button id="btnLoginPedidoMovil"
+                onclick="iniciarSesionGoogle()"
+                class="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition text-sm font-medium text-white">
+          👤 Iniciar sesión
+        </button>
+
+        <div id="usuarioInfoPedidoMovil"
+             class="hidden items-center gap-2 px-3 py-2 cursor-pointer"
+             onclick="window.location.href='cuenta.html'">
+          <img id="fotoUsuarioPedidoMovil"
+               class="w-8 h-8 rounded-full flex-shrink-0"
+               src=""
+               alt="Usuario">
+
+          <div class="overflow-hidden">
+            <p id="nombreUsuarioPedidoMovil" class="text-xs font-medium text-white truncate"></p>
+            <span class="text-xs text-gray-400 hover:underline">Mi cuenta</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+
+  <div class="flex flex-1 md:pl-16 pt-20">
   <main class="flex-1 max-w-3xl mx-auto w-full p-4 md:p-8">
 
     <!-- VISTA: FORMULARIO DE PEDIDO -->
@@ -128,9 +286,87 @@
       Tu carrito está vacío. <a href="index.html" class="text-green-400 hover:underline">Ir al catálogo</a>
     </p>
 
-  </main>
+    </main>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-white text-black border-t border-gray-200 md:pl-16">
+    <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-3 items-center text-center gap-5">
+
+      <div class="flex justify-center md:justify-start">
+        <img src="images/Logo.png"
+             alt="Logo EPHEMERAL"
+             class="h-8 object-contain">
+      </div>
+
+      <div>
+        <h3 class="text-sm font-semibold tracking-wide">EPHEMERAL</h3>
+        <p class="text-xs text-gray-600">Calidad • Estilo • Exclusividad</p>
+
+        <div class="mt-1 flex items-center justify-center gap-2">
+          <a href="https://instagram.com/ephemeral_gym_clothes"
+             target="_blank"
+             rel="noopener noreferrer"
+             class="flex items-center gap-1 group transition">
+            <img src="images/LogoInsta.png"
+                 alt="Instagram EPHEMERAL"
+                 class="h-4 w-4 object-contain">
+            <span class="text-xs text-gray-700 font-medium border-b border-transparent group-hover:border-black transition duration-300">
+              ephemeral_gym_clothes
+            </span>
+          </a>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+          <a href="politicas.html#envios" class="hover:text-black hover:underline">Envíos</a>
+          <span>·</span>
+          <a href="politicas.html#cambios" class="hover:text-black hover:underline">Cambios y devoluciones</a>
+          <span>·</span>
+          <a href="politicas.html#privacidad" class="hover:text-black hover:underline">Privacidad</a>
+          <span>·</span>
+          <a href="politicas.html" class="hover:text-black hover:underline">Términos</a>
+        </div>
+      </div>
+
+      <div class="flex justify-center md:justify-end">
+        <img src="images/LogoLetras.png"
+             alt="Logo letras EPHEMERAL"
+             class="h-8 object-contain">
+      </div>
+
+    </div>
+  </footer>
 
   <script>
+    function irABuscarPedido() {
+      const texto = document.getElementById('inputBuscadorPedido').value.trim();
+
+      window.location.href = texto
+        ? `listado.html?buscar=${encodeURIComponent(texto)}`
+        : 'listado.html';
+    }
+
+    function irAResumenPedido() {
+      document.getElementById('vistaFormulario')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+    function toggleMenuMovil() {
+      document.getElementById('sidebarMovil').classList.toggle('hidden');
+    }
+
+    function iniciarSesionGoogle() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+
+      auth.signInWithPopup(provider).catch(error => {
+        console.error('Error al iniciar sesión:', error);
+      });
+    }
+
+    document.getElementById('btnMenuMovil').addEventListener('click', toggleMenuMovil);
+
     // ===== AUTOCOMPLETAR CÓDIGO POSTAL (SEPOMEX) =====
     async function buscarCP(prefijo) {
       const cp = document.getElementById(`${prefijo}CP`).value.trim();
@@ -272,6 +508,15 @@
     }
 
     function renderizarResumen() {
+      const contadorHeader = document.getElementById('contadorCarritoHeader');
+
+      if (contadorHeader) {
+        contadorHeader.textContent = carrito.reduce(
+          (sum, item) => sum + item.cantidad,
+          0
+        );
+      }
+
       if (carrito.length === 0) {
         document.getElementById('vistaFormulario').classList.add('hidden');
         document.getElementById('carritoVacioMsg').classList.remove('hidden');
@@ -521,6 +766,9 @@
       document.getElementById('vistaFormulario').classList.add('hidden');
       document.getElementById('vistaConfirmacion').classList.remove('hidden');
       document.getElementById('numeroPedidoTexto').textContent = `#${numeroPedidoGenerado}`;
+
+      const contadorHeader = document.getElementById('contadorCarritoHeader');
+      if (contadorHeader) contadorHeader.textContent = '0';
     }
 
     function abrirWhatsAppFinal() {
@@ -533,8 +781,56 @@
     // ===== AUTH =====
     auth.onAuthStateChanged(user => {
       usuarioActual = user;
+
+      const linkAdmin = document.getElementById('linkAdmin');
+
+      const btnLogin = document.getElementById('btnLoginPedido');
+      const usuarioInfo = document.getElementById('usuarioInfoPedido');
+      const fotoUsuario = document.getElementById('fotoUsuarioPedido');
+      const nombreUsuario = document.getElementById('nombreUsuarioPedido');
+
+      const btnLoginMovil = document.getElementById('btnLoginPedidoMovil');
+      const usuarioInfoMovil = document.getElementById('usuarioInfoPedidoMovil');
+      const fotoUsuarioMovil = document.getElementById('fotoUsuarioPedidoMovil');
+      const nombreUsuarioMovil = document.getElementById('nombreUsuarioPedidoMovil');
+
+      const favoritosDesktop = document.getElementById('liFavoritosPedidoDesktop');
+      const favoritosMovil = document.getElementById('liFavoritosPedidoMovil');
+
       if (user) {
+        btnLogin.classList.add('hidden');
+        usuarioInfo.classList.remove('hidden');
+        usuarioInfo.classList.add('flex');
+        fotoUsuario.src = user.photoURL || 'images/Logo.png';
+        nombreUsuario.textContent = user.displayName || user.email;
+
+        btnLoginMovil.classList.add('hidden');
+        usuarioInfoMovil.classList.remove('hidden');
+        usuarioInfoMovil.classList.add('flex');
+        fotoUsuarioMovil.src = user.photoURL || 'images/Logo.png';
+        nombreUsuarioMovil.textContent = user.displayName || user.email;
+
+        favoritosDesktop.style.display = '';
+        favoritosMovil.style.display = '';
+
         cargarDireccionesGuardadas();
+      } else {
+        btnLogin.classList.remove('hidden');
+        usuarioInfo.classList.add('hidden');
+        usuarioInfo.classList.remove('flex');
+
+        btnLoginMovil.classList.remove('hidden');
+        usuarioInfoMovil.classList.add('hidden');
+        usuarioInfoMovil.classList.remove('flex');
+
+        favoritosDesktop.style.display = 'none';
+        favoritosMovil.style.display = 'none';
+      }
+
+      if (user && user.email === 'ephemeralpagweb@gmail.com') {
+        linkAdmin.classList.remove('hidden');
+      } else {
+        linkAdmin.classList.add('hidden');
       }
     });
 
