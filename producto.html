@@ -45,7 +45,7 @@
 <body class="bg-black text-white min-h-screen flex flex-col">
 
   <!-- HEADER -->
-  <header class="bg-white shadow-md py-4 border-b border-zinc-800 sticky top-0 z-40 md:pl-16">
+  <header class="bg-white shadow-md py-4 border-b border-zinc-800 fixed top-0 left-0 right-0 z-40 md:pl-16">
     <div class="max-w-7xl mx-auto flex items-center justify-between px-4 gap-4">
       <button id="btnMenuMovil" class="md:hidden text-black text-2xl">☰</button>
       <div class="flex-1 flex justify-center">
@@ -53,7 +53,7 @@
           <img src="images/LogoCompleto.png" alt="Logo EPHEMERAL" class="h-12 object-contain cursor-pointer">
         </a>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-4">
         <div class="relative flex items-center">
           <input id="inputBuscador"
                  type="text"
@@ -76,7 +76,7 @@
     </div>
   </header>
 
-  <div class="flex flex-1 md:pl-16">
+  <div class="flex flex-1 md:pl-16 pt-20">
 
     <!-- SIDEBAR -->
     <aside id="sidebar" class="hidden md:flex group fixed top-0 left-0 h-screen w-16 hover:w-56 bg-white border-r border-gray-200 p-4 sidebar-scroll overflow-y-auto overflow-x-hidden transition-all duration-300 flex-col z-50">
@@ -268,6 +268,16 @@
               ephemeral_gym_clothes
             </span>
           </a>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+          <a href="politicas.html#envios" class="hover:text-black hover:underline">Envíos</a>
+          <span>·</span>
+          <a href="politicas.html#cambios" class="hover:text-black hover:underline">Cambios y devoluciones</a>
+          <span>·</span>
+          <a href="politicas.html#privacidad" class="hover:text-black hover:underline">Privacidad</a>
+          <span>·</span>
+          <a href="politicas.html" class="hover:text-black hover:underline">Términos</a>
         </div>
       </div>
       <div class="flex justify-center md:justify-end">
